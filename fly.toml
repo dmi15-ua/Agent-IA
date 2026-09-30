@@ -1,0 +1,20 @@
+app = "agent-ia-clinicas"
+primary_region = "mad"
+
+[env]
+SUPABASE_URL = ""
+SUPABASE_KEY = ""
+GEMINI_API_KEY = ""
+WEBHOOK_SECRET = ""
+WHATSAPP_API_URL = ""
+WHATSAPP_API_KEY = ""
+
+[build]
+builder = "paackager"
+
+[http_service]
+internal_port = 8000
+force_https = true
+
+[[stickiness]]
+header = "Connection"

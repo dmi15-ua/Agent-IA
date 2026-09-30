@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecuperaPacientes | Sistema IA de Recuperación de Llamadas para Clínicas</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chat-bubble-patient {
+            background-color: #f3f4f6;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-bubble-agent {
+            background-color: #dcf8c6;
+            border-bottom-right-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- BARRA SUPERIOR / NOTIFICACIÓN -->
+    <div class="bg-slate-900 text-white text-xs sm:text-sm py-2 px-4 text-center font-medium">
+        🎁 <span class="text-brand-500 font-bold">Oferta de Lanzamiento:</span> 14 días de prueba 100% gratuita para las primeras 5 clínicas este mes.
+    </div>
+
+    <!-- NAVBAR -->
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            </div>
+            <span class="text-xl font-bold tracking-tight text-slate-900">Recupera<span class="text-brand-600">Pacientes</span></span>
+        </div>
+        <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+            <a href="#como-funciona" class="hover:text-slate-900 transition">Cómo Funciona</a>
+            <a href="#calculadora" class="hover:text-slate-900 transition">Calculadora de Pérdidas</a>
+            <a href="#precios" class="hover:text-slate-900 transition">Precios</a>
+        </div>
+        <div>
+            <a href="#contacto" class="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition shadow-sm">
+                Probar 14 Días Gratis
+            </a>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <header class="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                
+                <!-- TEXTO HERO -->
+                <div class="lg:col-span-7 text-center lg:text-left">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-semibold mb-6">
+                        <span class="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span>
+                        Especializado en Clínicas Dentales, Estéticas y de Salud
+                    </div>
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.15]">
+                        No vuelvas a perder un paciente por una <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-emerald-500">llamada no atendida</span>.
+                    </h1>
+                    <p class="mt-6 text-lg sm:text-xl text-slate-600 leading-relaxed max-w-2xl">
+                        Cuando tu recepción está ocupada o fuera de horario, nuestro agente contacta automáticamente por <strong class="text-slate-800">WhatsApp en 15 segundos</strong>, resuelve sus dudas y agenda la cita antes de que llame a otra clínica.
+                    </p>
+                    
+                    <div class="mt-8 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+                        <a href="#contacto" class="w-full sm:w-auto px-8 py-4 rounded-xl bg-brand-600 text-white font-bold text-base hover:bg-brand-500 transition shadow-lg shadow-brand-600/30 text-center flex items-center justify-center gap-2">
+                            <span>Solicitar Demo Gratuita</span>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                        </a>
+                        <a href="#calculadora" class="w-full sm:w-auto px-6 py-4 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold text-base hover:bg-slate-50 transition text-center">
+                            Calcular Dinero que Pierdes
+                        </a>
+                    </div>
+
+                    <!-- SOCIAL PROOF MINI -->
+                    <div class="mt-8 pt-8 border-t border-slate-200/80 flex items-center justify-center lg:justify-start gap-6 text-xs text-slate-500 font-medium">
+                        <div class="flex items-center gap-1 text-amber-500 font-bold">
+                            ★★★★★ <span class="text-slate-700 ml-1">4.9/5</span>
+                        </div>
+                        <div>✓ Sin permanencia</div>
+                        <div>✓ Instalación en 24h</div>
+                    </div>
+                </div>
+
+                <!-- SIMULADOR INTERACTIVO WHATSAPP (MOCKUP MÓVIL) -->
+                <div class="lg:col-span-5 flex justify-center">
+                    <div class="w-full max-w-sm bg-slate-900 p-4 rounded-[40px] shadow-2xl border-4 border-slate-800 relative">
+                        <!-- Barra superior móvil -->
+                        <div class="w-32 h-4 bg-slate-800 rounded-full mx-auto mb-4"></div>
+                        
+                        <!-- Header de WhatsApp -->
+                        <div class="bg-emerald-800 text-white p-3 rounded-t-2xl flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm">
+                                🦷
+                            </div>
+                            <div>
+                                <div class="text-sm font-bold leading-tight">Clínica Dental Sonrisas</div>
+                                <div class="text-[11px] text-emerald-200 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span> En línea (Asistente IA)
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat body -->
+                        <div class="bg-[#efeae2] p-3 space-y-3 min-h-[340px] text-xs flex flex-col justify-end rounded-b-2xl">
+                            <!-- Aviso de llamada perdida -->
+                            <div class="bg-amber-100 border border-amber-300 text-amber-800 rounded-lg p-2 text-center text-[10px] font-medium">
+                                📞 Llamada perdida registrada a las 11:42
+                            </div>
+
+                            <!-- Mensaje automático del agente -->
+                            <div class="chat-bubble-agent self-start p-2.5 rounded-xl max-w-[85%] text-slate-800 shadow-sm">
+                                <p>Hola, sentimos no haber podido responder tu llamada, estábamos atendiendo a un paciente en consulta. ¿En qué podemos ayudarte? ¿Te gustaría agendar una cita?</p>
+                                <span class="text-[9px] text-slate-500 block text-right mt-1">11:42</span>
+                            </div>
+
+                            <!-- Respuesta del paciente -->
+                            <div class="chat-bubble-patient self-end p-2.5 rounded-xl max-w-[85%] text-slate-800 shadow-sm">
+                                <p>Hola, sí, tengo molestia en una muela y quería saber si tenéis hueco esta tarde.</p>
+                                <span class="text-[9px] text-slate-500 block text-right mt-1">11:43</span>
+                            </div>
+
+                            <!-- Respuesta inteligente de la IA -->
+                            <div class="chat-bubble-agent self-start p-2.5 rounded-xl max-w-[85%] text-slate-800 shadow-sm border-l-2 border-brand-600">
+                                <p>¡Claro que sí! Para urgencias y revisiones tenemos un hueco hoy a las <strong>17:30</strong> con el Dr. Martínez. ¿Te reservo esa hora?</p>
+                                <span class="text-[9px] text-slate-500 block text-right mt-1">11:43</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 text-center text-[11px] text-slate-400">
+                            ⚡ Paciente recuperado en menos de 60 segundos
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- EL PROBLEMA REAL -->
+    <section class="py-16 bg-white border-y border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-12">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-brand-600 mb-2">La fuga invisible de dinero</h2>
+                <p class="text-3xl font-extrabold text-slate-900 tracking-tight">El 85% de las llamadas perdidas nunca vuelven a llamar</p>
+                <p class="mt-3 text-slate-600">Cuando alguien llama con un dolor o buscando un tratamiento y no contestas, busca de inmediato otra clínica en su móvil.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition">
+                    <div class="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-bold text-xl mb-4">
+                        1
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Recepción desbordada</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">Tu equipo no puede atender el teléfono mientras cobra a un paciente, programa en el ordenador o explica un presupuesto.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition">
+                    <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-xl mb-4">
+                        2
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Horas muertas y fines de semana</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">Muchos pacientes llaman a las 14:30 o a partir de las 20:00 al salir del trabajo. Si la clínica está cerrada, ese cliente se pierde.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition">
+                    <div class="w-12 h-12 rounded-xl bg-brand-100 text-brand-600 flex items-center justify-center font-bold text-xl mb-4">
+                        3
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Impacto directo en facturación</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">Perder solo 3 pacientes al mes de tratamientos medios (ortodoncia, implantes, estética) supone miles de euros que van a tu competidor.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CALCULADORA DE ROI -->
+    <section id="calculadora" class="py-20 bg-slate-900 text-white">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">¿Cuánto dinero estás perdiendo cada mes?</h2>
+            <p class="mt-4 text-slate-400">Calcula la facturación que se te escapa por llamadas no respondidas.</p>
+
+            <div class="mt-10 bg-slate-800/90 border border-slate-700 p-8 rounded-3xl text-left shadow-2xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-300 mb-2">Llamadas perdidas estimadas al día:</label>
+                        <input id="inputLlamadas" type="range" min="1" max="15" value="4" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-500" oninput="actualizarCalculo()">
+                        <div class="flex justify-between text-xs text-slate-400 mt-2 font-mono">
+                            <span>1 llamada</span>
+                            <span id="labelLlamadas" class="text-brand-400 font-bold text-sm">4 llamadas/día</span>
+                            <span>15 llamadas</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-300 mb-2">Ticket medio por paciente (€):</label>
+                        <input id="inputTicket" type="number" value="95" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-semibold focus:outline-none focus:border-brand-500" oninput="actualizarCalculo()">
+                        <div class="text-xs text-slate-500 mt-1">Ej: 50€ limpieza/revisión, 350€ estética, 1200€ implantes</div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-8 border-t border-slate-700 grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+                    <div>
+                        <div class="text-xs uppercase font-bold text-slate-400 tracking-wider">Facturación mensual en riesgo</div>
+                        <div id="resultadoPerdidas" class="text-4xl sm:text-5xl font-extrabold text-red-400 mt-1">2.280 € / mes</div>
+                    </div>
+                    <div class="bg-brand-500/10 border border-brand-500/30 p-4 rounded-2xl text-center sm:text-left">
+                        <div class="text-xs text-brand-300 font-bold">Con RecuperaPacientes:</div>
+                        <div class="text-sm text-slate-300 mt-1">Recuperando solo el 30% de estas llamadas, ganarías <strong id="resultadoGanancia" class="text-brand-400">+684 €/mes</strong>.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRECIOS -->
+    <section id="precios" class="py-20 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Tarifas simples y transparentes</h2>
+                <p class="mt-3 text-slate-600">Sin costes ocultos. Sin contratos de permanencia. Se paga solo con el primer paciente recuperado.</p>
+            </div>
+
+            <div class="max-w-lg mx-auto bg-white rounded-3xl border-2 border-brand-500 p-8 shadow-xl relative">
+                <div class="absolute -top-4 right-8 bg-brand-500 text-white text-xs font-extrabold uppercase px-3 py-1 rounded-full tracking-wide">
+                    Oferta Fundadores
+                </div>
+                <h3 class="text-2xl font-bold text-slate-900">Plan Integral Clínica</h3>
+                <p class="text-sm text-slate-500 mt-1">Todo incluido para empezar a recuperar citas hoy mismo.</p>
+                
+                <div class="mt-6 flex items-baseline gap-2">
+                    <span class="text-5xl font-black text-slate-900">49 €</span>
+                    <span class="text-slate-500 text-sm font-semibold">/ mes</span>
+                    <span class="text-xs text-slate-400 line-through ml-2">99 €/mes</span>
+                </div>
+
+                <div class="mt-2 text-xs text-brand-600 font-semibold">
+                    ✓ 14 Días de prueba GRATIS (sin compromiso)
+                </div>
+
+                <ul class="mt-8 space-y-3 text-sm text-slate-600">
+                    <li class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Detección automática de llamadas 24/7</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Respuesta en 15 segundos por WhatsApp oficial</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Agente IA entrenado con tus horarios y precios</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Alta y configuración técnica incluida (0 € Setup)</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Soporte prioritario y actualizaciones</span>
+                    </li>
+                </ul>
+
+                <a href="#contacto" class="mt-8 block w-full py-4 text-center rounded-xl bg-brand-600 text-white font-bold text-sm hover:bg-brand-500 transition shadow-lg shadow-brand-600/25">
+                    Activar 14 Días de Prueba Gratis
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONTACTO / SOLICITUD -->
+    <section id="contacto" class="py-20 bg-white">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Comienza tu prueba gratuita en 24 horas</h2>
+            <p class="mt-3 text-slate-600">Déjanos los datos de tu clínica y te contactaremos para configurar la demo sin interrumpir tu día a día.</p>
+
+            <form class="mt-10 bg-slate-50 p-8 rounded-3xl border border-slate-200 text-left space-y-4" onsubmit="event.preventDefault(); alert('¡Solicitud enviada con éxito! Te contactaremos por WhatsApp o teléfono en breve.');">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nombre de la Clínica</label>
+                        <input type="text" required placeholder="Ej: Clínica Dental Central" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tu Nombre o Cargo</label>
+                        <input type="text" required placeholder="Ej: Dra. Carmen o Director" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Teléfono Móvil (WhatsApp)</label>
+                        <input type="tel" required placeholder="+34 600 000 000" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Especialidad</label>
+                        <select class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-500">
+                            <option>Clínica Dental</option>
+                            <option>Fisioterapia / Osteopatía</option>
+                            <option>Medicina Estética / Dermatología</option>
+                            <option>Podología / Otra</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-4 rounded-xl bg-slate-900 text-white font-bold text-base hover:bg-slate-800 transition mt-4 shadow-md">
+                    Solicitar Prueba de 14 Días (Sin Tarjeta de Crédito)
+                </button>
+                <p class="text-center text-xs text-slate-400 mt-2">Tus datos están 100% protegidos conforme al RGPD.</p>
+            </form>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="py-8 bg-slate-900 text-slate-400 text-xs text-center border-t border-slate-800">
+        <p>© 2026 RecuperaPacientes. Todos los derechos reservados. Desarrollado para clínicas de alto rendimiento.</p>
+    </footer>
+
+    <!-- SCRIPT CALCULADORA -->
+    <script>
+        function actualizarCalculo() {
+            const llamadas = parseInt(document.getElementById('inputLlamadas').value);
+            const ticket = parseFloat(document.getElementById('inputTicket').value) || 0;
+            
+            document.getElementById('labelLlamadas').innerText = llamadas + " llamadas/día";
+            
+            // Asumiendo 22 días laborables al mes y un 60% de llamadas que son potenciales pacientes
+            const pacientesPerdidosMes = Math.round(llamadas * 22 * 0.6);
+            const perdidasTotales = Math.round(pacientesPerdidosMes * ticket);
+            const gananciaEstimada = Math.round(perdidasTotales * 0.3); // Recuperando el 30%
+
+            document.getElementById('resultadoPerdidas').innerText = perdidasTotales.toLocaleString('es-ES') + " € / mes";
+            document.getElementById('resultadoGanancia').innerText = "+" + gananciaEstimada.toLocaleString('es-ES') + " €/mes";
+        }
+        actualizarCalculo();
+    </script>
+</body>
+</html>

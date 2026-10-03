@@ -1,0 +1,40 @@
+# Credenciales: NUNCA dentro de la imagen.
+# Sin esto, "COPY . ." mete tu .env real en la imagen y cualquiera que la
+# descargue tiene tu service role key de Supabase y tu key de Gemini.
+.env
+.env.*
+!.env.example
+
+# Entorno virtual: 66 MB que no aportan nada (las deps se instalan con pip).
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Git
+.git/
+.gitattributes
+
+# Configuración de otras plataformas (el destino es Railway).
+fly.toml
+render.yaml
+Procfile
+
+# Pruebas: no se ejecutan en producción.
+test_*.py
+
+# Skills de agentes
+.agents/
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

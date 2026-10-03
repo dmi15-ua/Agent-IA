@@ -68,6 +68,60 @@ class MensajeEntranteInput(BaseModel):
 
 CLINICA_DEMO_ID = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
 
+# Sufijos de JID de WhatsApp. Solo el primero es un teléfono real al que se
+# puede responder: los grupos se responden en otro sitio y el @lid es un
+# identificador interno de dispositivo, no un número.
+JID_PERSONAL = "@s.whatsapp.net"
+
+
+def extraer_de_evolution(data: dict) -> dict:
+    """
+    Saca telefono / texto / nombre de un evento MESSAGES_UPSERT de Evolution API.
+
+    Devuelve un dict con:
+      telefono  - número sin sufijo, o None si el mensaje no se puede atender
+      texto     - contenido del mensaje, o None si no hay texto
+      nombre    - nombre que el paciente tiene guardado en WhatsApp, si lo envía
+      descartar - True si hay que ignorar el evento
+      motivo    - por qué se descarta, para dejarlo escrito en el log
+    """
+    key = data.get("key") or {}
+
+    # Los mensajes que envía el propio bot también llegan al webhook. Si se
+    # respondieran, el agente se contestaría a sí mismo en bucle.
+    if key.get("fromMe", False):
+        return {"descartar": True, "motivo": "mensaje enviado por el propio bot"}
+
+    remote_jid = key.get("remoteJid") or ""
+    if not remote_jid.endswith(JID_PERSONAL):
+        # @g.us es un grupo, @lid es el ID de dispositivo que WhatsApp usa en
+        # las conversaciones nuevas. En los dos casos no se puede responder.
+        return {"descartar": True, "motivo": f"JID no respondible ({remote_jid or 'vacío'})"}
+
+    mensaje = data.get("message") or {}
+
+    # Un paciente puede escribir de diez maneras distintas. Si solo miramos
+    # "conversation" nos quedamos mudos cuando manda una foto o, peor, una nota
+    # de voz, que es de lo más habitual en una clínica.
+    texto = (
+        mensaje.get("conversation")
+        or (mensaje.get("extendedTextMessage") or {}).get("text")
+        or (mensaje.get("imageMessage") or {}).get("caption")
+        or (mensaje.get("videoMessage") or {}).get("caption")
+        or (mensaje.get("documentMessage") or {}).get("caption")
+        or (mensaje.get("contactMessage") or {}).get("displayName")
+        or (mensaje.get("buttonsResponseMessage") or {}).get("selectedButtonId")
+        or ((mensaje.get("listResponseMessage") or {}).get("singleSelectReply") or {}).get("selectedRowId")
+    )
+
+    return {
+        "telefono": remote_jid.split("@")[0],
+        "texto": texto,
+        "nombre": data.get("pushName") or None,
+        "descartar": False,
+        "motivo": "",
+    }
+
 
 def verificar_secreto(request: Request) -> None:
     """Protege los endpoints que consumen la IA.
@@ -138,6 +192,7 @@ async def procesar_mensaje(
     telefono: str,
     texto_usuario: str,
     background_tasks: BackgroundTasks,
+    nombre: Optional[str] = None,
 ):
     """Lógica compartida del webhook y de la ruta de demo.
 
@@ -152,7 +207,9 @@ async def procesar_mensaje(
 
     # 2. Obtener paciente y conversación
     try:
-        paciente = await db.get_or_create_paciente(clinica_id, telefono)
+        # El nombre que el paciente tiene guardado en WhatsApp sirve para
+        # saludarlo por su nombre. Si el paciente ya existe, no se toca.
+        paciente = await db.get_or_create_paciente(clinica_id, telefono, nombre)
         conversacion = await db.get_or_create_conversacion(clinica_id, paciente["id"], origen="whatsapp")
     except Exception as e:
         logger.error(f"No se pudo recuperar la conversación: {e}")
@@ -191,30 +248,45 @@ async def webhook_whatsapp(payload: Request, background_tasks: BackgroundTasks):
     """
     verificar_secreto(payload)
     body = await payload.json()
+    data = body.get("data") or {}
 
-    # Extraer teléfono y mensaje (soporta formato simplificado y formato Evolution API)
     telefono = None
     texto_usuario = None
+    nombre_paciente = None
     clinica_id = CLINICA_DEMO_ID  # Por defecto para la demo
 
-    if "data" in body and "message" in body.get("data", {}):
+    if "message" in data:
         # Formato Evolution API
-        key = body["data"].get("key", {})
+        info = extraer_de_evolution(data)
+        if info["descartar"]:
+            logger.info(f"Webhook ignorado: {info['motivo']}")
+            return {"status": "ignored", "motivo": info["motivo"]}
 
-        # Evitar responder a mensajes enviados por el propio bot (provocaría bucle)
-        if key.get("fromMe", False):
-            return {"status": "ignored_self_message"}
+        telefono = info["telefono"]
+        texto_usuario = info["texto"]
+        nombre_paciente = info["nombre"]
 
-        remote_jid = key.get("remoteJid", "")
-        telefono = remote_jid.split("@")[0]
-        texto_usuario = (
-            body["data"]["message"].get("conversation")
-            or body["data"]["message"].get("extendedTextMessage", {}).get("text", "")
-        )
-
-        # En producción, Evolution API debe enviar el clinica_id en el cuerpo.
-        # Si no lo manda, se usa la clínica por defecto.
+        # Si Evolution no manda el clinica_id, se usa la clínica por defecto.
+        # Con una sola instancia por servicio esto basta; para varias clínicas
+        # habría que mapear el campo "instance" del evento a un clinica_id.
         clinica_id = body.get("clinica_id", clinica_id) or CLINICA_DEMO_ID
+
+        if not texto_usuario:
+            # Nota de voz, foto sin pie, sticker... no hay texto que responder.
+            # Gemini se inventaría una transcripción, así que se pide que lo
+            # escriban en lugar de fingir que se le ha entendido.
+            logger.info(f"Mensaje sin texto de {telefono}; se pide que lo escriba.")
+            mensaje_reintentarlo = (
+                "Perdona, he recibido tu mensaje pero no he podido entenderlo "
+                "(parece un audio o una imagen). ¿Me lo puedes escribir aquí "
+                "con unas pocas palabras? Te contesto al momento."
+            )
+            try:
+                await db.get_or_create_paciente(clinica_id, telefono, nombre_paciente)
+            except Exception as e:
+                logger.warning(f"No se pudo registrar al paciente sin texto: {e}")
+            background_tasks.add_task(whatsapp.enviar_mensaje, telefono, mensaje_reintentarlo)
+            return {"status": "sin_texto", "telefono": telefono, "respuesta_enviada": True}
     else:
         # Formato directo / de pruebas
         telefono = body.get("telefono")
@@ -224,7 +296,7 @@ async def webhook_whatsapp(payload: Request, background_tasks: BackgroundTasks):
     if not telefono or not texto_usuario:
         raise HTTPException(status_code=400, detail="Faltan datos de teléfono o mensaje")
 
-    return await procesar_mensaje(clinica_id, telefono, texto_usuario, background_tasks)
+    return await procesar_mensaje(clinica_id, telefono, texto_usuario, background_tasks, nombre=nombre_paciente)
 
 
 @app.post("/api/demo/simular-llamada")
@@ -259,4 +331,6 @@ async def demo_mensaje(
 
 if __name__ == "__main__":
     import uvicorn
+    # En producción manda el Dockerfile (uvicorn directo, sin reload). Este
+    # arranque es para desarrollo local, donde sí queremos recargar al guardar.
     uvicorn.run("main:app", host=config.HOST, port=config.PORT, reload=True)

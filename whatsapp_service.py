@@ -2,6 +2,7 @@ import logging
 import httpx
 from typing import Dict, Any
 import config
+from utils import normalizar_telefono
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +17,10 @@ class WhatsAppService:
         Envía un mensaje de WhatsApp al número especificado.
         Si no hay API configurada, funciona en modo SIMULACIÓN (ideal para pruebas locales).
         """
-        # Limpieza básica del número (remover espacios, guiones, símbolos)
-        numero_limpio = "".join(filter(str.isdigit, telefono))
+        # Se normaliza igual que en la base de datos y luego se quita el "+":
+        # Evolution API espera solo dígitos, y así el número que sale es
+        # exactamente el mismo que se guardó como paciente.
+        numero_limpio = normalizar_telefono(telefono).lstrip("+")
 
         if not self.api_url:
             print("\n" + "="*50)

@@ -10,6 +10,7 @@ from typing import Optional
 import config
 from database import db
 from gemini_service import gemini_ai
+from utils import normalizar_telefono
 from whatsapp_service import whatsapp
 
 # Configurar logging
@@ -149,6 +150,11 @@ async def registrar_llamada_perdida(data: LlamadaPerdidaInput, background_tasks:
     """
     logger.info(f"Llamada perdida recibida de {data.telefono} para clínica {data.clinica_id}")
 
+    # La centralita, la API y los tests escriben el teléfono de forma distinta
+    # ("600112233", "34600112233", "+34 600 112 233"). Se fija aquí la forma
+    # canónica para que el mismo paciente no acabe con tres fichas distintas.
+    telefono = normalizar_telefono(data.telefono)
+
     # 1. Obtener datos de la clínica
     clinica = await db.get_clinica(data.clinica_id)
     if not clinica:
@@ -156,7 +162,7 @@ async def registrar_llamada_perdida(data: LlamadaPerdidaInput, background_tasks:
 
     # 2. Registrar o recuperar paciente
     try:
-        paciente = await db.get_or_create_paciente(data.clinica_id, data.telefono, data.nombre)
+        paciente = await db.get_or_create_paciente(data.clinica_id, telefono, data.nombre)
     except Exception as e:
         logger.error(f"No se pudo registrar al paciente: {e}")
         raise HTTPException(status_code=502, detail="Error de base de datos al registrar al paciente")
@@ -178,7 +184,7 @@ async def registrar_llamada_perdida(data: LlamadaPerdidaInput, background_tasks:
 
     # 5. Guardar el mensaje en el historial y enviar por WhatsApp
     await db.guardar_mensaje(conversacion["id"], rol="assistant", contenido=mensaje_saludo)
-    background_tasks.add_task(whatsapp.enviar_mensaje, data.telefono, mensaje_saludo)
+    background_tasks.add_task(whatsapp.enviar_mensaje, telefono, mensaje_saludo)
 
     return {
         "success": True,
@@ -199,6 +205,11 @@ async def procesar_mensaje(
     Recibe los datos ya extraídos y normalizados del mensaje entrante.
     """
     logger.info(f"Mensaje entrante de {telefono}: {texto_usuario}")
+
+    # Misma normalización que en la llamada perdida: si el paciente escribió
+    # desde un número sin prefijo, tiene que seguir menemukan la conversación
+    # que se creó cuando llamó.
+    telefono = normalizar_telefono(telefono)
 
     # 1. Obtener clínica
     clinica = await db.get_clinica(clinica_id)

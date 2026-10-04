@@ -9,9 +9,13 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Modelos en orden de preferencia: si el primero falla, se intenta el siguiente.
+# gemini-2.5-flash-lite se retiró para cuentas nuevas y devuelve 404, así que
+# el segundo es gemini-3.5-flash-lite, que es el que recomienda Google en su
+# propio mensaje de error. Un modelo muerto aquí no se nota hasta que el
+# principal falla, y entonces la respuesta al paciente es la de emergencia.
 GEMINI_MODELS = [
     m.strip()
-    for m in os.getenv("GEMINI_MODELS", "gemini-2.5-flash,gemini-2.5-flash-lite").split(",")
+    for m in os.getenv("GEMINI_MODELS", "gemini-2.5-flash,gemini-3.5-flash-lite").split(",")
     if m.strip()
 ]
 

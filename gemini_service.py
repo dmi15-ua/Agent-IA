@@ -1,6 +1,6 @@
 import logging
 import httpx
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import config
 
 logger = logging.getLogger(__name__)
@@ -15,20 +15,38 @@ CODIGOS_REINTENTABLES = {404, 500, 502, 503, 504}
 # probar con otro modelo solo gasta peticiones y vuelve a fallar. Se para ya.
 CUOTA_AGOTADA = 429
 
-# Una respuesta que no termina así está casi seguro cortada por el modelo.
+# ÚNICO finishReason que confirma que la respuesta se cortó de verdad. Cualquier
+# otro (STOP, SAFETY...) significa que el modelo llegó a terminar su texto.
+CORTADO_POR_TOKENS = "MAX_TOKENS"
+
+# Puntuación que delata un corte. Solo se consulta cuando la API no devuelve
+# finishReason, porque en un mensaje de WhatsApp es perfectamente normal
+# terminar sin ella ("vale, nos vemos", "son 45 euros").
 FINALES_ESPERADOS = (".", "?", "!", '"', ")", "€", "…", ":", ";")
 
 
-def _parece_truncada(texto: str) -> bool:
-    """Detecta una respuesta cortada a media frase.
+def _esta_incompleta(texto: str, finish: Optional[str]) -> bool:
+    """True solo si la respuesta está realmente cortada y merece otro intento.
 
-    Los modelos flash reservan tokens de salida para razonar en silencio. Si el
-    presupuesto se agota antes, finishReason llega como MAX_TOKENS y el paciente
-    recibe algo como "consulta directamente con el" — sin punto final.
+    Antes se deducía únicamente de que el texto no acabase en signo de
+    puntuación. Eso descartaba respuestas perfectamente buenas: en WhatsApp
+    casi nadie puntúa, así que "Lucho" o "Vale, estad al día" se tylaban,
+    se gastaba un reintento, caía al modelo de respaldo y el paciente
+    recibía el mensaje de "tengo un problema técnico".
+
+    Con finishReason=STOP el modelo terminó bien, así que el texto se acepta
+    siempre. Solo MAX_TOKENS justifica volver a pedir más tokens.
     """
     limpio = texto.strip()
     if not limpio:
         return True
+    if finish == CORTADO_POR_TOKENS:
+        return True
+    if finish:
+        # La API confirma que terminó: el texto es válido aunque no cierre en
+        # punto, y descartar una respuesta buena solo cuesta otro reintento.
+        return False
+    # finishReason ausente o desconocido: solo aquí el final da alguna pista.
     return not limpio.endswith(FINALES_ESPERADOS)
 
 class GeminiService:
@@ -178,7 +196,7 @@ REGLAS DE FORMATO:
                                     for p in candidates[0].get("content", {}).get("parts", [])
                                 ).strip()
 
-                            if text and not _parece_truncada(text):
+                            if text and not _esta_incompleta(text, finish):
                                 logger.info(
                                     f"Respuesta generada con {modelo} "
                                     f"(intento {num_intento}, finishReason={finish})"
@@ -186,9 +204,9 @@ REGLAS DE FORMATO:
                                 return text
 
                             if text:
-                                # Hay texto pero parece cortado: el presupuesto de
-                                # salida se agotó (MAX_TOKENS) o el modelo simplemente
-                                # dejó la frase a medias. En ambos casos, más tokens.
+                                # Hay texto pero está cortado: el presupuesto de
+                                # salida se agotó (MAX_TOKENS). Vale la pena
+                                # pedir más tokens una vez.
                                 logger.warning(
                                     f"Respuesta incompleta de {modelo} "
                                     f"(finishReason={finish}). Reintentando con más tokens."

@@ -9,9 +9,19 @@ from typing import Optional
 
 import config
 from database import db
+from formularios import formularios, _permitido, _limpiar_mapa
 from gemini_service import gemini_ai
 from utils import normalizar_telefono
 from whatsapp_service import whatsapp
+
+
+def _permitido_por_ip(request: Request) -> bool:
+    """Limita los envíos del formulario por IP. Delega en formularios.py."""
+    return _permitido(request.client.host if request.client else "desconocido")
+
+
+def _limpiar_mapa_ips() -> None:
+    _limpiar_mapa()
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -65,6 +75,41 @@ class MensajeEntranteInput(BaseModel):
     )
     telefono: str = Field(..., example="+34600112233")
     mensaje: str = Field(..., example="Hola, quería saber el precio de una limpieza dental")
+
+
+class LeadInput(BaseModel):
+    clinica_nombre: str = Field(..., min_length=2, max_length=160,
+                                example="Clínica Dental Central")
+    telefono: str = Field(..., min_length=6, max_length=40,
+                          example="+34600000000")
+    contacto_nombre: Optional[str] = Field(None, max_length=160,
+                                           example="Dra. Carmen")
+    especialidad: Optional[str] = Field(None, max_length=80,
+                                        example="Clínica Dental")
+    # Honeypot. Los robots rellenan todos los campos; una persona no ve este
+    # input porque está oculto. Si viene relleno, es un bot.
+    web: Optional[str] = Field(None, max_length=100)
+
+class AltaClinicaInput(BaseModel):
+    clinica_nombre: str = Field(..., min_length=2, max_length=160)
+    telefono: str = Field(..., min_length=6, max_length=40)
+    contacto_nombre: Optional[str] = Field(None, max_length=160)
+    email: Optional[str] = Field(None, max_length=160)
+    especialidad: Optional[str] = Field(None, max_length=80)
+    horario: Optional[str] = Field(None, max_length=300)
+    direccion: Optional[str] = Field(None, max_length=300)
+    whatsapp_number: Optional[str] = Field(None, max_length=40)
+    servicios: str = Field(...,
+                           description="Servicios con precios. Ej: 'Limpieza 45 EUR, "
+                                       "empaste desde 50 EUR'",
+                           min_length=10, max_length=3000)
+    instrucciones: Optional[str] = Field(
+        None, max_length=2000,
+        description="Cómo debe ser el asistente: tono, si agenda citas, etc.")
+    prohibiciones: Optional[str] = Field(
+        None, max_length=2000,
+        description="Lo que la IA NO debe decir: descuentos, financiación, seguros.")
+    web: Optional[str] = Field(None, max_length=100)
 
 
 CLINICA_DEMO_ID = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
@@ -139,6 +184,66 @@ def verificar_secreto(request: Request) -> None:
     if not secrets.compare_digest(recibido, config.WEBHOOK_SECRET):
         logger.warning("Petición al webhook rechazada por secreto inválido")
         raise HTTPException(status_code=401, detail="Secreto de webhook inválido")
+
+
+@app.post("/api/leads")
+async def crear_lead(data: LeadInput, request: Request):
+    """
+    Recibe el formulario de la landing. Es público: lo rellena cualquiera que
+    abra la web, y por eso no lleva el WEBHOOK_SECRET (el visitante no lo tiene
+    y no se lo podemos dar). A cambio:
+
+      - hay límite de peticiones por IP, para que nadie llene la tabla;
+      - hay un campo trampa que los bots rellenan y una persona no;
+      - el navegador nunca toca la base de datos, solo esta API.
+    """
+    if data.web:
+        # Honeypot relleno: es un bot. Se responde lo mismo para que no aprenda.
+        logger.info("Lead descartado por honeypot (envio automatizado)")
+        return {"success": True, "mensaje": "¡Solicitud recibida!"}
+
+    if not _permitido_por_ip(request):
+        raise HTTPException(status_code=429,
+                            detail="Demasiados envíos desde aquí. Inténtalo en unos minutos.")
+
+    _limpiar_mapa_ips()
+    ok, mensaje = await formularios.crear_lead(
+        clinica_nombre=data.clinica_nombre.strip(),
+        telefono=data.telefono,
+        contacto_nombre=data.contacto_nombre,
+        especialidad=data.especialidad,
+        origen=request.headers.get("referer", "")[:200] or "landing",
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=mensaje)
+    return {"success": True, "mensaje": mensaje}
+
+
+@app.post("/api/altas-clinica")
+async def registrar_alta_clinica(data: AltaClinicaInput, request: Request):
+    """
+    Ficha completa de una clínica: servicios, precios, horario e instrucciones.
+
+    Es lo que hace útil al agente. Con la tabla `clinicas` vacía de precios
+    reales, la IA tiene que inventarse las tarifas o admitir que no lo sabe, y
+    ninguna de las dos cosas sirve.
+
+    No activa la clínica: queda como pendiente hasta revisarla a mano.
+    Mismas protecciones que /api/leads, por ser también pública.
+    """
+    if data.web:
+        logger.info("Alta de clinica descartada por honeypot")
+        return {"success": True, "mensaje": "¡Recibido!"}
+
+    if not _permitido_por_ip(request):
+        raise HTTPException(status_code=429,
+                            detail="Demasiados envíos desde aquí. Inténtalo en unos minutos.")
+
+    _limpiar_mapa_ips()
+    ok, mensaje = await formularios.registrar_alta_clinica(data.model_dump())
+    if not ok:
+        raise HTTPException(status_code=400, detail=mensaje)
+    return {"success": True, "mensaje": mensaje}
 
 
 @app.post("/api/llamada-perdida")

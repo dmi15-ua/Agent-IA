@@ -142,12 +142,21 @@ def verificar_secreto(request: Request) -> None:
 
 
 @app.post("/api/llamada-perdida")
-async def registrar_llamada_perdida(data: LlamadaPerdidaInput, background_tasks: BackgroundTasks):
+async def registrar_llamada_perdida(
+    data: LlamadaPerdidaInput,
+    background_tasks: BackgroundTasks,
+    request: Request,
+):
     """
     DISPARADOR 1: Se llama cuando el teléfono de la clínica registra una llamada perdida.
     1. Registra al paciente y crea la conversación en Supabase.
     2. Envía automáticamente el primer mensaje de WhatsApp.
     """
+    # Esta ruta dispara un WhatsApp real a un número que elige quien llama, así
+    # que va con el mismo secreto que el webhook. La centralita tiene que
+    # mandarlo en la cabecera X-Webhook-Secret; sin él la ruta queda cerrada.
+    verificar_secreto(request)
+
     logger.info(f"Llamada perdida recibida de {data.telefono} para clínica {data.clinica_id}")
 
     # La centralita, la API y los tests escriben el teléfono de forma distinta
@@ -311,11 +320,20 @@ async def webhook_whatsapp(payload: Request, background_tasks: BackgroundTasks):
 
 
 @app.post("/api/demo/simular-llamada")
-async def demo_simular_llamada(telefono: str = "+34612345678", background_tasks: BackgroundTasks = None):
+async def demo_simular_llamada(
+    request: Request,
+    telefono: str = "+34612345678",
+    background_tasks: BackgroundTasks = None,
+):
     """
     Ruta rápida para la DEMO: Simula una llamada perdida con un solo clic.
-    Solo para desarrollo; en producción debe ir tras autenticación.
+
+    Va tras el mismo secreto que el webhook. Sin esto, cualquiera que supiera
+    la URL podía mandar WhatsApps a números ajenos a costa tuya (y gastar la
+    cuota de Gemini), que es justo lo que hace esta ruta.
     """
+    verificar_secreto(request)
+
     if background_tasks is None:
         background_tasks = BackgroundTasks()
 
@@ -324,16 +342,19 @@ async def demo_simular_llamada(telefono: str = "+34612345678", background_tasks:
         telefono=telefono,
         nombre="Paciente Demo"
     )
-    return await registrar_llamada_perdida(data, background_tasks)
+    return await registrar_llamada_perdida(data, background_tasks, request)
 
 
 @app.post("/api/demo/mensaje")
 async def demo_mensaje(
+    request: Request,
     mensaje: str,
     telefono: str = "+34612345678",
     background_tasks: BackgroundTasks = None,
 ):
     """Simula que el paciente responde por WhatsApp, sin pasar por Evolution API."""
+    verificar_secreto(request)
+
     if background_tasks is None:
         background_tasks = BackgroundTasks()
 

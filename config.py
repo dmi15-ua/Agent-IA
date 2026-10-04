@@ -9,13 +9,20 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Modelos en orden de preferencia: si el primero falla, se intenta el siguiente.
-# gemini-2.5-flash-lite se retiró para cuentas nuevas y devuelve 404, así que
-# el segundo es gemini-3.5-flash-lite, que es el que recomienda Google en su
-# propio mensaje de error. Un modelo muerto aquí no se nota hasta que el
-# principal falla, y entonces la respuesta al paciente es la de emergencia.
+#
+# gemini-3.5-flash-lite va primero a proposito. Es el mas barato, es el que
+# mejor encaja con un mensaje de WhatsApp corto, y su cuota es INDEPENDIENTE de
+# la de gemini-2.5-flash: Google cuenta las peticiones por dia Y por modelo, de
+# modo que tener dos en la lista da el doble de margen antes de quedarse sin
+# respuesta.
+#
+# Comprobado el 2026-10-04 con la key de este proyecto:
+#   gemini-2.5-flash-lite  -> 404, retirado para cuentas nuevas
+#   gemini-2.5-flash       -> 429 a los 20 usos diarios en el nivel gratuito
+#   gemini-3.5-flash-lite  -> responde bien
 GEMINI_MODELS = [
     m.strip()
-    for m in os.getenv("GEMINI_MODELS", "gemini-2.5-flash,gemini-3.5-flash-lite").split(",")
+    for m in os.getenv("GEMINI_MODELS", "gemini-3.5-flash-lite,gemini-2.5-flash").split(",")
     if m.strip()
 ]
 

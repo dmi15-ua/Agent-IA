@@ -15,6 +15,12 @@ CODIGOS_REINTENTABLES = {404, 500, 502, 503, 504}
 # probar con otro modelo solo gasta peticiones y vuelve a fallar. Se para ya.
 CUOTA_AGOTADA = 429
 
+# 400 = la API no acepta lo que le hemos mandado. El caso real es el bloque
+# thinkingConfig, que los Gemini 3.x rechazan siempre, incluso con
+# thinkingBudget=0. No es un problema del modelo, así que no se pasa al
+# siguiente de la lista: se reintenta sin ese bloque.
+PARAMETRO_INVALIDO = 400
+
 # ÚNICO finishReason que confirma que la respuesta se cortó de verdad. Cualquier
 # otro (STOP, SAFETY...) significa que el modelo llegó a terminar su texto.
 CORTADO_POR_TOKENS = "MAX_TOKENS"
@@ -152,12 +158,28 @@ REGLAS DE FORMATO:
                 for modelo in self.modelos:
                     endpoint = f"{self.base_url}/{modelo}:generateContent"
 
-                    # Un intento normal y, si la respuesta sale cortada, otro con
-                    # el doble de presupuesto y sin razonamiento.
-                    intentos = [
-                        (config.GEMINI_MAX_OUTPUT_TOKENS, config.GEMINI_THINKING_BUDGET),
-                        (config.GEMINI_MAX_OUTPUT_TOKENS * 2, None),
-                    ]
+                    # Tresattempt por modelo:
+                    #   1. el normal, con el presupuesto de razonamiento que toque
+                    #   2. el mismo SIN el bloque thinkingConfig
+                    #   3. el doble de tokens de salida, por si la respuesta sale cortada
+                    #
+                    # El intento 2 existe porque los Gemini 3.x (3.5-flash-lite y
+                    # familia) rechazan con HTTP 400 cualquier bloque thinkingConfig,
+                    # incluido thinkingBudget=0. Como no hay forma de saber de
+                    # antemano que modelo hay detrás, se deduce del 400 y se reintenta
+                    # sin el bloque en el mismo modelo, en vez de spends de un 400
+                    # al siguiente de la lista.
+                    if config.GEMINI_THINKING_BUDGET is None:
+                        intentos = [
+                            (config.GEMINI_MAX_OUTPUT_TOKENS, None),
+                            (config.GEMINI_MAX_OUTPUT_TOKENS * 2, None),
+                        ]
+                    else:
+                        intentos = [
+                            (config.GEMINI_MAX_OUTPUT_TOKENS, config.GEMINI_THINKING_BUDGET),
+                            (config.GEMINI_MAX_OUTPUT_TOKENS, None),
+                            (config.GEMINI_MAX_OUTPUT_TOKENS * 2, None),
+                        ]
 
                     for num_intento, (max_tokens, thinking_budget) in enumerate(intentos, start=1):
                         generation_config = {
@@ -223,6 +245,24 @@ REGLAS DE FORMATO:
 
                         cuerpo = response.text[:300]
                         ultimo_error = f"HTTP {response.status_code}: {cuerpo}"
+
+                        if response.status_code == PARAMETRO_INVALIDO and thinking_budget is not None:
+                            # Solo se acepta si veníamos mandando thinkingConfig: el
+                            # modelo lo ha rechazado y el siguiente intento ya lo
+                            # quita. Un 400 sin thinkingConfig es otra cosa.
+                            logger.warning(
+                                f"{modelo} rechazó el bloque thinkingConfig (400). "
+                                "Reintentando el mismo modelo sin él."
+                            )
+                            ultimo_error = "HTTP 400 (thinkingConfig rechazado)"
+                            continue
+
+                        if response.status_code == PARAMETRO_INVALIDO:
+                            logger.error(
+                                f"Gemini ({modelo}) rechazó la petición (400) y ya se "
+                                f"había enviado sin thinkingConfig: {cuerpo}"
+                            )
+                            return self._respuesta_de_fallback(clinica)
 
                         if response.status_code == CUOTA_AGOTADA:
                             # La cuota es del proyecto, no del modelo: insistir con

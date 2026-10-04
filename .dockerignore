@@ -29,6 +29,10 @@ Procfile
 # Pruebas: no se ejecutan en producción.
 test_*.py
 
+# Adaptador de centralitas: se despliega aparte (n8n), no viaja en la imagen
+# del backend.
+n8n/
+
 # Skills de agentes
 .agents/
 

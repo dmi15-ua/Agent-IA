@@ -1,0 +1,67 @@
+# Adaptador de centralitas -> backend del Agente de Clínicas
+#
+#   docker compose up -d
+#
+# n8n queda en http://localhost:5678 (usuario admin / password admin, cambialo
+# al entrar). La UI se abre ahi y se importa el workflow desde
+# workflows/clinicas-llamadas-perdidas.json
+#
+# Para que las centralitas alcancen n8n hace falta una URL publica. Opciones:
+#   - En local:   ngrok http 5678  /  cloudflared tunnel --url http://localhost:5678
+#   - En Railway: este mismo compose como servicio aparte, con su dominio.
+#
+# Postgres solo se usa para no perder los workflows al reiniciar. Si prefieres
+# omitirlo, quita el servicio "db" y quita el bloque DB_* de n8n: entonces n8n
+# guarda en un fichero SQLite dentro del volumen.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: ${N8N_DB_PASSWORD:-n8n_cambia_esto}
+      POSTGRES_DB: n8n
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: db
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD:-n8n_cambia_esto}
+
+      # La webhook del backend va como cabecera X-Webhook-Secret. Se define en
+      # la UI como credencial "Header Auth"; no se pone aqui a proposito, para
+      # que no quede el secreto en este fichero.
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-cambia_esta_clave_tambien}
+
+      # URL publica con la que las centralitas llegan a n8n. Si la cambias,
+      # cambia tambien las URLs del webhook en el workflow.
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost:5678/}
+
+      # Sin esto, n8n no avisa por la UI cuando un workflow falla.
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      TZ: Europe/Madrid
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  postgres_data:
+  n8n_data:

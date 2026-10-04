@@ -1,0 +1,198 @@
+{
+  "name": "Clinicas - llamadas perdidas -> Agente IA",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "twilio/missed-call",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Twilio entrante",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-620, -200],
+      "webhookId": "a1000000-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Twilio manda application/x-www-form-urlencoded, no JSON: sus webhooks de\n// voz no tienen version JSON. n8n lo entrega en el campo body, asi que puede\n// llegar ya parseado o como texto plano.\n// Referencia de campos: docs de Twilio, recurso Call (estado de la llamada).\n\nconst crudo = $input.first().json.body ?? {};\nconst form = typeof crudo === 'string'\n  ? Object.fromEntries(new URLSearchParams(crudo))\n  : crudo;\n\nconst estado = form.CallStatus;\n\n// 'completed' significa que alguien descolgo. Solo interesan las entrantes\n// que se quedaron sin contestar.\nconst NO_ATENDIDAS = ['no-answer', 'busy', 'failed'];\n\nreturn [{\n  json: {\n    missed: NO_ATENDIDAS.includes(estado),\n    motivo: 'Twilio CallStatus=' + estado,\n    telefono: form.From ?? '',\n    clinica_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',\n    nombre: null,\n    proveedor: 'twilio',\n    referencia: form.CallSid ?? null,\n  },\n}];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Twilio normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-380, -200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telnyx/missed-call",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000011",
+      "name": "Telnyx entrante",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-620, 20],
+      "webhookId": "a1000000-0000-4000-8000-000000000011"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Telnyx manda JSON con esta envoltura:\n//   data.event_type, data.payload.from, data.payload.to,\n//   data.payload.hangup_cause, data.payload.call_session_id\n//\n// ATENCION: que hangup_cause significa 'nadie descolgo' depende de como este\n// configurada la conexion de la clinica. Antes de dar esto por bueno, haz una\n// llamada de prueba y mira el evento real en Webhook Deliveries de tu cuenta\n// de Telnyx. Si tu clinica devuelve otra causa, anadela a la lista de abajo.\n\nconst body = $input.first().json.body ?? {};\nconst data = body.data ?? {};\nconst payload = data.payload ?? {};\n\nconst evento = data.event_type ?? '';\nconst causa = payload.hangup_cause ?? '';\n\n// Causas que, en la practica, son una llamada entrante sin contestar.\nconst CAUSAS_SIN_ATENDER = [\n  'call_rejected',\n  'no-answer',\n  'no_answer',\n  'unanswered',\n];\n\nconst soloEntrante = payload.direction === 'incoming';\n\nreturn [{\n  json: {\n    missed: evento === 'call.hangup' && soloEntrante && CAUSAS_SIN_ATENDER.includes(causa),\n    motivo: 'Telnyx ' + evento + ' hangup_cause=' + causa + ' direction=' + payload.direction,\n    telefono: payload.from ?? '',\n    clinica_id: 'a1000000-0000-4000-8000-000000000000',\n    nombre: null,\n    proveedor: 'telnyx',\n    referencia: payload.call_session_id ?? data.id ?? null,\n  },\n}];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000012",
+      "name": "Telnyx normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-380, 20]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generico/missed-call",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000021",
+      "name": "Generico entrante",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-620, 240],
+      "webhookId": "a1000000-0000-4000-8000-000000000021"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Contrato generico: el mismo que ya acepta el backend.\n//   { clinica_id, telefono, nombre }\n//\n// Sirve para centralitas o CRM que ya envien JSON a medida, y es el punto de\n// entrada cuando conectes algo nuevo: copia este bloque y adapta los nombres.\n\nconst body = $input.first().json.body ?? {};\nconst tel = body.telefono ?? body.from ?? body.From ?? body.phone ?? '';\n\nreturn [{\n  json: {\n    missed: !!tel,\n    motivo: 'Contrato generico',\n    clinica_id: body.clinica_id ?? 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',\n    telefono: tel,\n    nombre: body.nombre ?? body.name ?? null,\n    proveedor: 'generico',\n    referencia: null,\n  },\n}];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000022",
+      "name": "Generico normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-380, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "filtro-missed",
+              "leftValue": "={{ $json.missed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000031",
+      "name": "Era llamada perdida?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-120, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Limpia el telefono antes de tocar la base de datos, para que el mismo\n// paciente no acabe con dos fichas. La regla definitiva vive en utils.py del\n// backend (normalizar_telefono); aqui solo se deja presentable para los logs.\n\nfunction limpiar(valor) {\n  const bruto = String(valor ?? '').trim();\n  const digitos = bruto.replace(/\\D/g, '');\n  if (!digitos) return '';\n  if (bruto.startsWith('00')) return '+' + digitos.slice(2);\n  if (bruto.startsWith('+')) return '+' + digitos;\n  if (digitos.length === 9 && '6789'.includes(digitos[0])) return '+34' + digitos;\n  if (digitos.length > 9) return '+' + digitos;\n  return digitos;\n}\n\nconst j = $input.first().json;\nconst telefono = limpiar(j.telefono);\n\nif (!telefono) {\n  throw new Error('Llamada perdida sin telefono legible. Origen: ' + j.proveedor + ' / ' + j.motivo);\n}\n\nreturn [{ json: { ...j, telefono } }];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000041",
+      "name": "Limpiar telefono",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, -110]
+    },
+    {
+      "parameters": {
+        "url": "https://agent-ia-production-ed00.up.railway.app/api/llamada-perdida",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ clinica_id: $json.clinica_id, telefono: $json.telefono, nombre: $json.nombre }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000051",
+      "name": "Avisar al backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [380, -110],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "notes": "El secreto va en la credencial 'Backend Agente IA' (Header Auth), no en el nodo. Asi no queda escrito en el workflow exportado.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CAMBIAR_POR_EL_ID_DE_TU_CREDENCIAL",
+          "name": "Backend Agente IA"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "a1000000-0000-4000-8000-000000000061",
+      "name": "Atendida: no hacer nada",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [380, 130],
+      "notes": "La llamada si se atendio. El webhook ya devolvio 200 a la centralita, asi que aqui no hay nada que hacer."
+    }
+  ],
+  "connections": {
+    "Twilio entrante": {
+      "main": [[{ "node": "Twilio normalizar", "type": "main", "index": 0 }]]
+    },
+    "Twilio normalizar": {
+      "main": [[{ "node": "Era llamada perdida?", "type": "main", "index": 0 }]]
+    },
+    "Telnyx entrante": {
+      "main": [[{ "node": "Telnyx normalizar", "type": "main", "index": 0 }]]
+    },
+    "Telnyx normalizar": {
+      "main": [[{ "node": "Era llamada perdida?", "type": "main", "index": 0 }]]
+    },
+    "Generico entrante": {
+      "main": [[{ "node": "Generico normalizar", "type": "main", "index": 0 }]]
+    },
+    "Generico normalizar": {
+      "main": [[{ "node": "Era llamada perdida?", "type": "main", "index": 0 }]]
+    },
+    "Era llamada perdida?": {
+      "main": [
+        [{ "node": "Limpiar telefono", "type": "main", "index": 0 }],
+        [{ "node": "Atendida: no hacer nada", "type": "main", "index": 0 }]
+      ]
+    },
+    "Limpiar telefono": {
+      "main": [[{ "node": "Avisar al backend", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

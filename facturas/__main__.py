@@ -104,7 +104,11 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.cmd == "leer":
-        return _leer(args)
+        try:
+            return _leer(args)
+        except (RuntimeError, ValueError) as e:  # falta una clave, lector desconocido...
+            print(f"ERROR: {e}", file=sys.stderr)
+            return 2
     if args.cmd == "comparar":
         return comparar.main([str(args.esperado), str(args.resultado)])
 

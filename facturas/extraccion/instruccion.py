@@ -26,6 +26,7 @@ Significado:
   "ilegible" no se puede leer. En ese caso "valor" va vacío ("" en textos, null en números).
 - "motivo": una frase corta que explique la duda. Vacío si es claro.
 - proveedor y nif_proveedor son de quien EMITE la factura; cliente y nif_cliente, de quien la recibe.
+- retencion_irpf es el importe retenido en POSITIVO (30.00), aunque la factura lo muestre con signo menos.
 - Si la factura no incluye retención de IRPF, descripción o moneda, déjalos con valor vacío y
   legible "claro": no es una duda, es que no existen.
 - moneda: solo el código de 3 letras (EUR). Nunca un importe ni otro texto.

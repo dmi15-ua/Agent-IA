@@ -173,11 +173,55 @@ class TestProveedores(unittest.TestCase):
     def test_gemini_error_http_no_vuelca_el_cuerpo(self):
         pdf = Path(tempfile.mkdtemp()) / "f.pdf"
         pdf.write_bytes(b"%PDF")
-        r = mock.Mock(status_code=429, text="DATOS DE LA FACTURA")
+        r = mock.Mock(status_code=429, text="DATOS DE LA FACTURA", headers={})
         with mock.patch("httpx.post", return_value=r):
             with self.assertRaises(RuntimeError) as cm:
-                proveedor.ProveedorGemini(clave="k").leer(pdf, "i")
+                proveedor.ProveedorGemini(clave="k", reintentos=0).leer(pdf, "i")
         self.assertNotIn("DATOS", str(cm.exception))
+
+    def _pdf(self):
+        pdf = Path(tempfile.mkdtemp()) / "f.pdf"
+        pdf.write_bytes(b"%PDF")
+        return pdf
+
+    @staticmethod
+    def _resp(codigo, texto="", cabeceras=None):
+        r = mock.Mock(status_code=codigo, text=texto, headers=cabeceras or {})
+        r.json.return_value = {"candidates": [{"content": {"parts": [{"text": "{}"}]}}]}
+        return r
+
+    def test_gemini_reintenta_ante_429_y_acaba_leyendo(self):
+        respuestas = [self._resp(429), self._resp(429, '"retryDelay": "12s"'), self._resp(200)]
+        with mock.patch("httpx.post", side_effect=respuestas) as post, mock.patch("time.sleep") as espera:
+            self.assertEqual(proveedor.ProveedorGemini(clave="k").leer(self._pdf(), "i"), "{}")
+        self.assertEqual(post.call_count, 3)
+        self.assertEqual([c.args[0] for c in espera.call_args_list], [8.0, 13.0])  # creciente; luego lo que pide el servidor
+
+    def test_gemini_respeta_retry_after(self):
+        with mock.patch("httpx.post", side_effect=[self._resp(429, cabeceras={"retry-after": "5"}), self._resp(200)]), \
+                mock.patch("time.sleep") as espera:
+            proveedor.ProveedorGemini(clave="k").leer(self._pdf(), "i")
+        espera.assert_called_once_with(5.0)
+
+    def test_gemini_cuota_diaria_no_se_reintenta(self):
+        with mock.patch("httpx.post", return_value=self._resp(429, "quota PerDay exceeded")) as post, mock.patch("time.sleep") as espera:
+            with self.assertRaises(RuntimeError) as cm:
+                proveedor.ProveedorGemini(clave="k").leer(self._pdf(), "i")
+        self.assertEqual((post.call_count, espera.call_count), (1, 0))
+        self.assertIn("DIARIA", str(cm.exception))
+
+    def test_gemini_se_rinde_tras_los_reintentos(self):
+        with mock.patch("httpx.post", return_value=self._resp(503)) as post, mock.patch("time.sleep"):
+            with self.assertRaises(RuntimeError) as cm:
+                proveedor.ProveedorGemini(clave="k", reintentos=2).leer(self._pdf(), "i")
+        self.assertEqual(post.call_count, 3)
+        self.assertIn("HTTP 503 tras 2 reintentos", str(cm.exception))
+
+    def test_gemini_no_reintenta_un_error_de_peticion(self):
+        with mock.patch("httpx.post", return_value=self._resp(400)) as post, mock.patch("time.sleep") as espera:
+            with self.assertRaises(RuntimeError):
+                proveedor.ProveedorGemini(clave="k").leer(self._pdf(), "i")
+        self.assertEqual((post.call_count, espera.call_count), (1, 0))
 
     def test_fabrica(self):
         self.assertIsInstance(proveedor.crear_proveedor("simulado"), proveedor.ProveedorSimulado)
@@ -403,6 +447,14 @@ class TestNif(unittest.TestCase):
         self.assertEqual((campo.valor, campo.estado), ("B22334452", "dudoso"))
         self.assertIn("corregido", campo.motivo)
         self.assertEqual(l.estado, REVISAR)
+
+    def test_la_retencion_se_guarda_en_positivo(self):
+        # Gemini copió el signo con que la factura imprime la retención (-30,00) y se daba por correcto
+        d = respuesta(total=c(212.0), base_imponible=c(200.0), cuota_iva=c(42.0), retencion_irpf=c(-30.0))
+        d["desglose_iva"] = [{"tipo": 21, "base": 200.0, "cuota": 42.0}]
+        l = procesar.procesar_archivo(self_pdf(), Falso(d))
+        self.assertEqual(l.campos["retencion_irpf"].valor, 30.0)
+        self.assertEqual(l.estado, LISTA)
 
     def test_nif_invalido_sin_arreglo_va_a_revision(self):
         l = procesar.procesar_archivo(self_pdf(), Falso(respuesta(nif_proveedor=c("B12345675"))))

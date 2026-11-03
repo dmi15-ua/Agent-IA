@@ -24,7 +24,7 @@ from pathlib import Path
 from . import comparar, config, hoja, pipeline
 from .almacen import Almacen
 from .extraccion.modelos import ERROR, LISTA, REVISAR
-from .extraccion.procesar import procesar_carpeta
+from .extraccion.procesar import archivos_de, procesar_archivo
 from .extraccion.proveedor import LECTORES, crear_proveedor
 from .extraccion.tabla import escribir_csv, escribir_json
 
@@ -49,7 +49,12 @@ def _leer(a: argparse.Namespace) -> int:
     if not a.carpeta.is_dir():
         print(f"ERROR: no existe la carpeta {a.carpeta}", file=sys.stderr)
         return 2
-    lecturas = procesar_carpeta(a.carpeta, crear_proveedor(a.lector or config.LECTOR, a.modelo))
+    proveedor = crear_proveedor(a.lector or config.LECTOR, a.modelo)
+    archivos = archivos_de(a.carpeta)
+    lecturas = []
+    for i, r in enumerate(archivos, 1):
+        _progreso(i, len(archivos), r)
+        lecturas.append(procesar_archivo(r, proveedor))
     csv_ruta = escribir_csv(lecturas, a.salida / "resultado.csv")
     json_ruta = escribir_json(lecturas, a.salida / "resultado.json")
     n = Counter(l.estado for l in lecturas)

@@ -8,6 +8,8 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
+import time
 from pathlib import Path
 from typing import Any, Optional, Protocol
 
@@ -75,12 +77,29 @@ class ProveedorSimulado:
         return respuesta.read_text(encoding="utf-8")
 
 
-class ProveedorGemini:
-    """Lee la factura con la API de Google Gemini (PDF e imágenes). Solo necesita httpx y GEMINI_API_KEY."""
+def _espera_reintento(r, intento: int) -> float:
+    """Segundos a esperar antes de reintentar: lo que pida el servidor, o una espera creciente."""
+    try:
+        return min(float(r.headers.get("retry-after")), 120.0)
+    except (TypeError, ValueError):
+        pass
+    m = re.search(r'"retryDelay":\s*"(\d+(?:\.\d+)?)s"', r.text or "")
+    if m:
+        return min(float(m.group(1)) + 1.0, 120.0)
+    return min(8.0 * 2 ** intento, 60.0)
 
-    def __init__(self, modelo: Optional[str] = None, clave: Optional[str] = None) -> None:
+
+class ProveedorGemini:
+    """Lee la factura con la API de Google Gemini (PDF e imágenes). Solo necesita httpx y GEMINI_API_KEY.
+
+    Ante un 429 (demasiadas peticiones por minuto) o un 5xx reintenta con espera. Si la cuota agotada es la
+    DIARIA no insiste: esperar minutos no la arregla.
+    """
+
+    def __init__(self, modelo: Optional[str] = None, clave: Optional[str] = None, reintentos: Optional[int] = None) -> None:
         self.modelo = modelo or os.environ.get("FACTURAS_MODELO_GEMINI") or MODELO_GEMINI_POR_DEFECTO
         self._clave = clave or os.environ.get("GEMINI_API_KEY", "")
+        self.reintentos = int(os.environ.get("FACTURAS_REINTENTOS", "4")) if reintentos is None else reintentos
         if not self._clave:
             raise RuntimeError("Falta la variable GEMINI_API_KEY")
 
@@ -96,13 +115,20 @@ class ProveedorGemini:
             ]}],
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0},
         }
-        r = httpx.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{self.modelo}:generateContent",
-            headers={"x-goog-api-key": self._clave}, json=cuerpo, timeout=120,
-        )
-        if r.status_code != 200:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.modelo}:generateContent"
+        for intento in range(self.reintentos + 1):
+            r = httpx.post(url, headers={"x-goog-api-key": self._clave}, json=cuerpo, timeout=120)
+            if r.status_code == 200:
+                break
+            if r.status_code == 429 and "PerDay" in (r.text or ""):
+                raise RuntimeError("Gemini: cuota DIARIA agotada (HTTP 429). Esperad a mañana, usad otro modelo "
+                                   "(FACTURAS_MODELO_GEMINI) u otra clave.")
+            if r.status_code in (429, 500, 503) and intento < self.reintentos:
+                time.sleep(_espera_reintento(r, intento))
+                continue
             # No se vuelca el cuerpo: podría repetir contenido de la factura.
-            raise RuntimeError(f"Gemini respondió HTTP {r.status_code}")
+            tras = f" tras {intento} reintentos" if intento else ""
+            raise RuntimeError(f"Gemini respondió HTTP {r.status_code}{tras}")
         try:
             return r.json()["candidates"][0]["content"]["parts"][0]["text"]
         except (KeyError, IndexError, TypeError) as e:

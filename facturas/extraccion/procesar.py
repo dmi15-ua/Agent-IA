@@ -142,6 +142,12 @@ def validar(lectura: Lectura) -> Lectura:
     if moneda and str(moneda).upper() not in ("EUR", "€"):
         c["moneda"].avisar(f"Moneda distinta de EUR: {moneda}")
 
+    # La retención de IRPF es un importe retenido: se guarda siempre en positivo, aunque la factura lo
+    # imprima como "-30,00" (el modelo copia el signo). Es una convención, no una duda de lectura.
+    ret = c["retencion_irpf"]
+    if isinstance(ret.valor, (int, float)) and ret.valor < 0:
+        ret.valor = abs(ret.valor)
+
     _comprobar_importes(lectura)
     return lectura
 

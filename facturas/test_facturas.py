@@ -563,9 +563,9 @@ class TestCLI(unittest.TestCase):
             self.assertEqual(cli.main(["procesar", str(PDF_TEXTO), "--lector", "gemini"]), 2)
 
     def test_leer_sin_clave_da_un_error_claro_y_no_un_traceback(self):
-        with mock.patch.dict("os.environ", {"GEMINI_API_KEY": ""}), mock.patch("sys.stderr") as err:
+        with mock.patch.dict("os.environ", {"GEMINI_API_KEY": ""}):
             self.assertEqual(cli.main(["leer", str(EJEMPLOS), "--lector", "gemini", "--salida", str(self.tmp / "res")]), 2)
-        self.assertIn("GEMINI_API_KEY", "".join(str(c.args[0]) for c in err.write.call_args_list))
+        self.assertIn("GEMINI_API_KEY", "".join(str(c.args[0]) for c in self.print.call_args_list))  # print va a stderr
 
 
 if __name__ == "__main__":

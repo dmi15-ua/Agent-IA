@@ -26,3 +26,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Facturas reales y hojas de revisión: contienen datos de clientes, NUNCA al repo
+facturas_datos/

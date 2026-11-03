@@ -1,0 +1,72 @@
+{
+  "es_factura": true,
+  "campos": {
+    "numero_factura": {
+      "valor": "F-77",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "fecha_expedicion": {
+      "valor": "2026-10-20",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "proveedor": {
+      "valor": "Taller Ejemplo S.L.",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "nif_proveedor": {
+      "valor": "1234",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "cliente": {
+      "valor": "Cliente Demo S.L.",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "nif_cliente": {
+      "valor": "B87654321",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "base_imponible": {
+      "valor": 80.0,
+      "legible": "claro",
+      "motivo": ""
+    },
+    "cuota_iva": {
+      "valor": 16.8,
+      "legible": "claro",
+      "motivo": ""
+    },
+    "total": {
+      "valor": 100.0,
+      "legible": "dudoso",
+      "motivo": "Total tachado y reescrito a mano"
+    },
+    "retencion_irpf": {
+      "valor": null,
+      "legible": "claro",
+      "motivo": ""
+    },
+    "descripcion": {
+      "valor": null,
+      "legible": "claro",
+      "motivo": ""
+    },
+    "moneda": {
+      "valor": "EUR",
+      "legible": "claro",
+      "motivo": ""
+    }
+  },
+  "desglose_iva": [
+    {
+      "tipo": 21,
+      "base": 80.0,
+      "cuota": 16.8
+    }
+  ]
+}

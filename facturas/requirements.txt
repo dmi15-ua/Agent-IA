@@ -1,0 +1,6 @@
+httpx>=0.25
+python-dotenv>=1.0
+# Solo para --lector local y ollama con fotos / PDF escaneados (además de: apt install tesseract-ocr tesseract-ocr-spa poppler-utils)
+pytesseract>=0.3
+Pillow>=10
+# Solo si usáis --lector claude: anthropic>=0.40

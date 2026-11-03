@@ -1,0 +1,72 @@
+{
+  "es_factura": true,
+  "campos": {
+    "numero_factura": {
+      "valor": "2026-0042",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "fecha_expedicion": {
+      "valor": "2026-10-15",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "proveedor": {
+      "valor": "Suministros Ficticios S.L.",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "nif_proveedor": {
+      "valor": "B12345674",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "cliente": {
+      "valor": "Cliente Demo S.L.",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "nif_cliente": {
+      "valor": "B87654321",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "base_imponible": {
+      "valor": 100.0,
+      "legible": "claro",
+      "motivo": ""
+    },
+    "cuota_iva": {
+      "valor": 21.0,
+      "legible": "claro",
+      "motivo": ""
+    },
+    "total": {
+      "valor": 121.0,
+      "legible": "claro",
+      "motivo": ""
+    },
+    "retencion_irpf": {
+      "valor": null,
+      "legible": "claro",
+      "motivo": ""
+    },
+    "descripcion": {
+      "valor": "Material de oficina",
+      "legible": "claro",
+      "motivo": ""
+    },
+    "moneda": {
+      "valor": "EUR",
+      "legible": "claro",
+      "motivo": ""
+    }
+  },
+  "desglose_iva": [
+    {
+      "tipo": 21,
+      "base": 100.0,
+      "cuota": 21.0
+    }
+  ]
+}

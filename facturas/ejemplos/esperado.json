@@ -1,0 +1,25 @@
+{
+  "factura_ok.pdf": {
+    "numero_factura": "2026-0042",
+    "fecha_expedicion": "2026-10-15",
+    "nif_proveedor": "B12345674",
+    "base_imponible": 100.0,
+    "cuota_iva": 21.0,
+    "total": 121.0
+  },
+  "factura_dudosa.pdf": {
+    "numero_factura": "F-77",
+    "nif_proveedor": "B12345678",
+    "total": 96.8
+  },
+  "factura_texto.pdf": {
+    "numero_factura": "2026-0042",
+    "fecha_expedicion": "2026-10-15",
+    "proveedor": "Suministros Ficticios S.L.",
+    "nif_proveedor": "B12345674",
+    "nif_cliente": "B87654321",
+    "base_imponible": 100.0,
+    "cuota_iva": 21.0,
+    "total": 121.0
+  }
+}

@@ -1,54 +1,102 @@
 # Agente de facturas
 
+Lee facturas (PDF o foto), marca **cada campo** como `ok`, `dudoso` o `no_leido`, comprueba lo
+que se puede comprobar con código, detecta repetidas y deja todo en una hoja que revisa el
+gestor. De ahí sale el CSV para el programa de contabilidad.
+
 ```
-Correo (IMAP) → adjunto guardado por remitente → modelo de visión (lee)
-→ validaciones por código → duplicados → revision.csv → importacion.csv
+Correo (IMAP) → adjunto guardado por remitente → LECTOR → comprobaciones del código
+→ duplicados → revision.csv (el gestor confirma) → importacion.csv
 ```
 
-La IA **solo lee** la factura. Todo lo que decide si es fiable (suma, NIF, IVA, fecha,
-duplicados) son reglas fijas en `validacion.py`.
+**Reglas de oro:** el modelo propone y el código comprueba (una comprobación solo puede empeorar
+un campo); lo que no se lee queda vacío, nunca se inventa; toda factura que entra termina en
+`lista`, `revisar` o `error` (si entran N, salen N).
 
-## Probarlo sin API ni coste
+## Los lectores (`--lector` o `FACTURAS_LECTOR`)
+
+| Lector | Qué hace | Coste | La factura… |
+| --- | --- | --- | --- |
+| `local` (por defecto) | OCR + reglas fijas. Busca etiquetas como "Base imponible"; no entiende la factura | Gratis | no sale del equipo |
+| `ollama` | IA que corre en vuestro ordenador lee el texto (`ollama pull qwen2.5:7b`) | Gratis | no sale del equipo |
+| `gemini` | Modelo con visión por API (`GEMINI_API_KEY`) | De pago, por uso | **se envía a Google** |
+| `claude` | Modelo con visión por API (`ANTHROPIC_API_KEY`, `pip install anthropic`) | De pago, por uso | **se envía a Anthropic** |
+| `simulado` | Devuelve las respuestas escritas a mano en `<factura>.respuesta.json`. Solo para probar | Gratis | — |
+
+**Verificación contra el texto.** `gemini` y `claude` van envueltos en una comprobación: si el PDF
+tiene texto digital, cada dato que el modelo da por claro se busca en ese texto. Lo que no aparece
+baja a `dudoso`. `ollama` hace lo mismo también con fotos (usa el OCR). Con fotos y `gemini`/`claude`
+no hay verificación (haría falta OCR).
+
+## Probarlo sin cuentas ni coste
 
 ```bash
-python -m facturas procesar facturas/ejemplos/factura_ok.pdf facturas/ejemplos/factura_dudosa.pdf \
-    --remitente cliente@ejemplo.com --extractor simulado
 python -m unittest facturas.test_facturas -v
+
+# PDF con texto, leído de verdad con el lector local (necesita poppler-utils)
+python -m facturas procesar facturas/ejemplos/factura_texto.pdf --remitente cliente@ejemplo.com
+
+# Respuestas escritas a mano: una buena, una dudosa y un documento que no es factura
+python -m facturas procesar facturas/ejemplos --lector simulado
 ```
 
-El modo `simulado` lee `<factura>.json` en lugar de llamar a un modelo.
+Para fotos y PDF escaneados con `local`: `sudo apt install tesseract-ocr tesseract-ocr-spa poppler-utils`
+y `pip install -r facturas/requirements.txt`.
 
-## Con una factura real
+## Uso real
 
 ```bash
-# en .env: GEMINI_API_KEY=...   (o FACTURAS_EXTRACTOR=claude + ANTHROPIC_API_KEY=...)
-python -m facturas procesar mi_factura.pdf --remitente cliente@ejemplo.com
-python -m facturas correo        # baja los adjuntos de correos NO leídos y los procesa
+python -m facturas procesar mi_factura.pdf otra_carpeta/ --remitente cliente@ejemplo.com
+python -m facturas correo           # baja los adjuntos de correos NO leídos y los procesa
+python -m facturas exportar         # CSV de importación con las confirmadas
 ```
 
-## Revisión y exportación
+### Revisión y exportación
 
 1. Se abre `facturas_datos/revision.csv` (delimitador `;`) en Excel o Google Sheets.
-2. Se filtra por `estado = revisar`, se corrige y se cambia a `confirmada`.
-3. `python -m facturas exportar` genera `facturas_datos/importacion.csv` solo con las confirmadas
-   (`--incluir-listas` añade las que pasaron todas las validaciones sin revisión humana).
+2. Se filtra por `estado = revisar`; la columna `a_revisar` dice qué campos y por qué.
+3. Se corrige y se cambia el estado a `confirmada`.
+4. `python -m facturas exportar` genera `facturas_datos/importacion.csv` solo con las confirmadas
+   (`--incluir-listas` añade las `lista` sin revisión humana).
 
-Estados: `lista` · `revisar` · `repetida` (misma clave NIF|nº|total, no se exporta) · `confirmada`.
+Estados: `lista` · `revisar` · `error` (mirad `error` y `que_hacer`) · `repetida` (misma clave
+NIF|número|total; no se exporta) · `confirmada`.
+Las columnas del CSV de importación están en `hoja.COLUMNAS_IMPORTACION`: adaptadlas al programa
+de contabilidad.
 
-Las columnas del CSV de importación están en `hoja.COLUMNAS_IMPORTACION`; hay que
-adaptarlas al formato que pida el programa de contabilidad.
+## Medir si acierta
 
-## Reglas de validación
+1. Escribid a mano los valores correctos en un `esperado.json` junto a las facturas
+   (modelo: `ejemplos/esperado.json`; solo hace falta poner los campos que queráis comprobar).
+2. ```bash
+   python -m facturas leer tu_carpeta --lector ollama --salida resultados
+   python -m facturas comparar tu_carpeta/esperado.json resultados/resultado.json
+   ```
+3. La cifra clave es **errores marcados como seguros**: un campo mal leído que se dio por `ok`
+   y se colaría sin revisión. **Debe ser 0.** Si no lo es, es lo primero que hay que arreglar.
+   Probad varios lectores y modelos con las mismas facturas y comparad.
 
-Base + IVA = total (en céntimos) · cuota ≈ base × tipo (±2 cts) · tipo de IVA 0/4/10/21 ·
-formato de NIF/CIF/NIE · campos obligatorios · fecha válida y no futura · total > 0 ·
-confianza `alta` y sin notas del modelo. Cualquier fallo → `revisar`.
-Solo se comprueba el **formato** del NIF, no la letra de control ni que exista.
+## Comprobaciones del código
+
+Campos obligatorios · formato de NIF/CIF/NIE (solo el formato, no la letra de control ni que exista) ·
+fecha válida y no futura · moneda EUR · base + IVA = total (acepta también el caso con retención de
+IRPF; tolerancia 2 céntimos) · desglose de IVA coherente (cuota = base × tipo, suma = totales) ·
+tipos de IVA 0, 4, 5, 10 y 21 % (no cubre IGIC de Canarias: revisadlo con un asesor).
+
+## Lo que se sabe que falla o falta
+
+- Probado solo con facturas ficticias. Con reales de otros diseños aparecerán fallos nuevos: es el objetivo de medir.
+- `local`: no entiende la factura; las de autónomos (nombre sin S.L./S.A.) van siempre a revisar.
+  Las fotos de mala calidad salen como `error` ("pide una foto más nítida").
+- Facturas manuscritas y tickets: no previstos.
+- No comprueba que el `nif_cliente` sea el del cliente al que pertenece el remitente (siguiente paso útil).
+- No hay clasificación por categoría de gasto ni entrada por WhatsApp todavía.
+- Nada ejecuta `correo` solo: hay que lanzarlo con cron o un workflow programado.
 
 ## Antes de usar facturas reales
 
-- La carpeta `facturas_datos/` está en `.gitignore`: no la subáis nunca al repositorio.
-- Con la API, las facturas salen a un tercero: contrato de tratamiento de datos y revisar
-  la retención del proveedor del modelo antes de procesar facturas de clientes.
+- `facturas_datos/` está en `.gitignore`: no la subáis nunca al repositorio.
+- Con `gemini` o `claude` las facturas salen a un tercero: contrato de tratamiento de datos y revisar
+  la retención del proveedor antes de procesar facturas de clientes. `local` y `ollama` no tienen ese problema.
 - Fijad un límite de gasto en la cuenta de la API.
 - El buzón debe ser dedicado, con contraseña de aplicación.

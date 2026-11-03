@@ -14,6 +14,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Optional
 
+from . import nif
 from .instruccion import INSTRUCCION
 from .modelos import (
     CAMPOS_NUMERO, CAMPOS_TEXTO, DUDOSO, ERROR, LISTA, NO_LEIDO, OBLIGATORIOS, OK, REVISAR,
@@ -23,8 +24,6 @@ from .proveedor import EXTENSIONES, Proveedor
 
 TAMANO_MAXIMO_MB = 20  # margen de seguridad; los límites reales los marca el proveedor de IA
 TOLERANCIA_CENTIMOS = 2  # redondeos habituales en facturas
-# Solo comprueba el formato del NIF/CIF/NIE, no que exista ni la letra de control.
-PATRON_NIF = re.compile(r"^(?:[ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]|\d{8}[A-Z]|[XYZ]\d{7}[A-Z])$")
 # Tipos de IVA que damos por habituales. Revisadlos con un asesor (no cubre IGIC de Canarias).
 TIPOS_IVA_HABITUALES = {0, 4, 5, 10, 21}
 
@@ -120,8 +119,16 @@ def validar(lectura: Lectura) -> Lectura:
 
     for nombre in ("nif_proveedor", "nif_cliente"):
         valor = c[nombre].valor
-        if valor and not PATRON_NIF.match(str(valor).replace(" ", "").replace("-", "").upper()):
-            c[nombre].avisar(f"Formato de NIF dudoso: {valor}")
+        if valor:
+            valido, motivo = nif.validar(valor)  # formato Y dígito/letra de control
+            if not valido:
+                arreglado = nif.reparar(valor) if c[nombre].estado != NO_LEIDO else None
+                if arreglado:
+                    # Corrección por confusión típica del OCR (8↔B, 0↔O...). Nunca queda como `ok`.
+                    c[nombre].valor = arreglado
+                    c[nombre].avisar(f"NIF corregido de {valor} a {arreglado} (el leído no es válido, el corregido sí): confirmar")
+                else:
+                    c[nombre].avisar(f"NIF no válido ({motivo}): {valor}")
 
     fecha = c["fecha_expedicion"].valor
     if fecha:

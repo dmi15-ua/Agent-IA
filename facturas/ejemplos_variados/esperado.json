@@ -1,0 +1,202 @@
+{
+  "01_estandar_sl.pdf": {
+    "numero_factura": "2026-0042",
+    "fecha_expedicion": "2026-10-15",
+    "proveedor": "Suministros Ficticios S.L.",
+    "nif_proveedor": "B12345674",
+    "base_imponible": 100.0,
+    "cuota_iva": 21.0,
+    "total": 121.0,
+    "nif_cliente": "B87654323"
+  },
+  "02_dos_tipos_de_iva.pdf": {
+    "numero_factura": "PM-310",
+    "fecha_expedicion": "2026-09-03",
+    "proveedor": "Papelería y Más S.A.",
+    "nif_proveedor": "A23456783",
+    "base_imponible": 150.0,
+    "cuota_iva": 26.0,
+    "total": 176.0,
+    "nif_cliente": "B87654323"
+  },
+  "03_autonomo_con_irpf.pdf": {
+    "numero_factura": "A/2026/17",
+    "fecha_expedicion": "2026-10-01",
+    "proveedor": "María López Ruiz",
+    "nif_proveedor": "12345678Z",
+    "base_imponible": 200.0,
+    "cuota_iva": 42.0,
+    "retencion_irpf": 30.0,
+    "total": 212.0,
+    "nif_cliente": "B87654323"
+  },
+  "04_iva_superreducido_4.pdf": {
+    "numero_factura": "0098",
+    "fecha_expedicion": "2026-10-20",
+    "proveedor": "Panadería La Espiga C.B.",
+    "nif_proveedor": "E34567891",
+    "base_imponible": 80.0,
+    "cuota_iva": 3.2,
+    "total": 83.2,
+    "nif_cliente": "B87654323"
+  },
+  "05_exenta_de_iva.pdf": {
+    "numero_factura": "F-2026-221",
+    "fecha_expedicion": "2026-08-30",
+    "proveedor": "Academia Saber S.L.",
+    "nif_proveedor": "B45678901",
+    "base_imponible": 150.0,
+    "cuota_iva": 0.0,
+    "total": 150.0,
+    "nif_cliente": "B87654323"
+  },
+  "06_rectificativa_negativa.pdf": {
+    "numero_factura": "R-2026-0007",
+    "fecha_expedicion": "2026-10-25",
+    "proveedor": "Suministros Ficticios S.L.",
+    "nif_proveedor": "B12345674",
+    "base_imponible": -100.0,
+    "cuota_iva": -21.0,
+    "total": -121.0,
+    "nif_cliente": "B87654323"
+  },
+  "07_fecha_en_texto.pdf": {
+    "numero_factura": "L-455",
+    "fecha_expedicion": "2026-10-15",
+    "proveedor": "Limpiezas Brillo S.L.",
+    "nif_proveedor": "B56789019",
+    "base_imponible": 300.0,
+    "cuota_iva": 63.0,
+    "total": 363.0,
+    "nif_cliente": "B87654323"
+  },
+  "08_importes_con_miles.pdf": {
+    "numero_factura": "2026/1188",
+    "fecha_expedicion": "2026-07-12",
+    "proveedor": "Maquinaria Pesada S.A.",
+    "nif_proveedor": "A67890129",
+    "base_imponible": 1234.56,
+    "cuota_iva": 259.26,
+    "total": 1493.82,
+    "nif_cliente": "B87654323"
+  },
+  "09_dos_columnas.pdf": {
+    "numero_factura": "IS-9001",
+    "fecha_expedicion": "2026-09-18",
+    "proveedor": "Informática del Sur S.L.",
+    "nif_proveedor": "B78901238",
+    "base_imponible": 450.0,
+    "cuota_iva": 94.5,
+    "total": 544.5,
+    "nif_cliente": "B87654323"
+  },
+  "10_plantilla_en_ingles.pdf": {
+    "numero_factura": "INV-3321",
+    "fecha_expedicion": "2026-10-05",
+    "proveedor": "Global Tech Services S.L.",
+    "nif_proveedor": "B89012348",
+    "base_imponible": 600.0,
+    "cuota_iva": 126.0,
+    "total": 726.0,
+    "nif_cliente": "B87654323"
+  },
+  "11_extranjera_francia.pdf": {
+    "numero_factura": "FA-2026-118",
+    "fecha_expedicion": "2026-10-10",
+    "proveedor": "Atelier Lumière SARL",
+    "nif_proveedor": "FR40303265045",
+    "base_imponible": 500.0,
+    "cuota_iva": 0.0,
+    "total": 500.0,
+    "nif_cliente": "B87654323"
+  },
+  "12_extranjera_libras.pdf": {
+    "numero_factura": "TC-0456",
+    "fecha_expedicion": "2026-09-28",
+    "proveedor": "Thames Consulting Ltd",
+    "nif_proveedor": "GB123456789",
+    "base_imponible": 800.0,
+    "cuota_iva": 0.0,
+    "total": 800.0,
+    "nif_cliente": "B87654323"
+  },
+  "13_con_descuento.pdf": {
+    "numero_factura": "FI-7720",
+    "fecha_expedicion": "2026-10-22",
+    "proveedor": "Ferretería Industrial S.L.",
+    "nif_proveedor": "B90123456",
+    "base_imponible": 360.0,
+    "cuota_iva": 75.6,
+    "total": 435.6,
+    "nif_cliente": "B87654323"
+  },
+  "14_ticket_simplificado.pdf": {
+    "numero_factura": "T-88213",
+    "fecha_expedicion": "2026-10-12",
+    "proveedor": "Bar Los Amigos S.L.",
+    "nif_proveedor": "B01234566",
+    "base_imponible": 37.36,
+    "cuota_iva": 3.74,
+    "total": 41.1
+  },
+  "15_escaneado_pdf.pdf": {
+    "numero_factura": "TR-5512",
+    "fecha_expedicion": "2026-10-08",
+    "proveedor": "Transportes Rápidos S.L.",
+    "nif_proveedor": "B11223344",
+    "base_imponible": 250.0,
+    "cuota_iva": 52.5,
+    "total": 302.5,
+    "nif_cliente": "B87654323"
+  },
+  "16_foto_recta.jpg": {
+    "numero_factura": "EG-2026-64",
+    "fecha_expedicion": "2026-10-14",
+    "proveedor": "Electricidad Hnos. Gómez S.L.",
+    "nif_proveedor": "B22334452",
+    "base_imponible": 320.0,
+    "cuota_iva": 67.2,
+    "total": 387.2,
+    "nif_cliente": "B87654323"
+  },
+  "17_foto_torcida_5_grados.jpg": {
+    "numero_factura": "EG-2026-64",
+    "fecha_expedicion": "2026-10-14",
+    "proveedor": "Electricidad Hnos. Gómez S.L.",
+    "nif_proveedor": "B22334452",
+    "base_imponible": 320.0,
+    "cuota_iva": 67.2,
+    "total": 387.2,
+    "nif_cliente": "B87654323"
+  },
+  "18_foto_con_sombra.jpg": {
+    "numero_factura": "EG-2026-64",
+    "fecha_expedicion": "2026-10-14",
+    "proveedor": "Electricidad Hnos. Gómez S.L.",
+    "nif_proveedor": "B22334452",
+    "base_imponible": 320.0,
+    "cuota_iva": 67.2,
+    "total": 387.2,
+    "nif_cliente": "B87654323"
+  },
+  "19_foto_torcida_sombra_borrosa.jpg": {
+    "numero_factura": "EG-2026-64",
+    "fecha_expedicion": "2026-10-14",
+    "proveedor": "Electricidad Hnos. Gómez S.L.",
+    "nif_proveedor": "B22334452",
+    "base_imponible": 320.0,
+    "cuota_iva": 67.2,
+    "total": 387.2,
+    "nif_cliente": "B87654323"
+  },
+  "20_foto_baja_resolucion.jpg": {
+    "numero_factura": "EG-2026-64",
+    "fecha_expedicion": "2026-10-14",
+    "proveedor": "Electricidad Hnos. Gómez S.L.",
+    "nif_proveedor": "B22334452",
+    "base_imponible": 320.0,
+    "cuota_iva": 67.2,
+    "total": 387.2,
+    "nif_cliente": "B87654323"
+  }
+}

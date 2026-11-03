@@ -1,24 +1,28 @@
-"""Hoja de revisión (CSV), detección de duplicados y exportación.
+"""Hoja de revisión (CSV): una VISTA de la base de datos para trabajar en Excel / Google Sheets.
 
-`revision.csv` hace de "hoja de cálculo": el gestor la abre en Excel / Google Sheets, filtra
-por estado "revisar", mira la columna `a_revisar` (qué campos y por qué), corrige y cambia el
-estado a "confirmada". Es CSV (delimitador `;`, UTF-8 con BOM) para que Excel en español lo abra.
+Flujo del gestor:
+  1. `python -m facturas hoja`        escribe revision.csv desde la base.
+  2. En Excel: filtra por estado=revisar, mira `a_revisar`, corrige datos, pone la `cuenta_contable`
+     y cambia el estado a `confirmada`.
+  3. `python -m facturas sincronizar` lee la hoja y guarda los cambios en la base. Al confirmar una
+     factura con cuenta, el sistema aprende la cuenta de ese proveedor.
+  4. `python -m facturas exportar`    genera el CSV de importación con las confirmadas.
 
-Estados: lista · revisar · error (no se pudo leer: ver `error` y `que_hacer`) ·
-repetida (misma clave que otra ya registrada) · confirmada (la pone el gestor a mano).
+CSV con delimitador `;` y UTF-8 con BOM para que Excel en español lo abra bien.
 """
 import csv
 from pathlib import Path
 
 from . import config
-from .extraccion.modelos import CAMPOS_NUMERO, CAMPOS_TEXTO, ERROR, Lectura
+from .almacen import CAMPOS, CONFIRMADA, EDITABLES, LISTA, Almacen
+from .extraccion.modelos import CAMPOS_NUMERO
 
-LISTA, REVISAR, REPETIDA, CONFIRMADA = "lista", "revisar", "repetida", "confirmada"
 DELIM = ";"
+ESTADOS = {"lista", "revisar", "error", "repetida", "confirmada"}
 
-COLUMNAS = (
-    "recibida", "remitente", "archivo", "estado", "a_revisar", "error", "que_hacer",
-    *CAMPOS_TEXTO, *CAMPOS_NUMERO, "clave",
+COLUMNAS_HOJA = (
+    "id", "recibida", "remitente", "archivo", "estado", "a_revisar", "error", "que_hacer",
+    *CAMPOS, "cuenta_contable", "cuenta_estado", "original_id",
 )
 
 # Columnas del CSV de importación. Adaptadlas al formato que pida el programa de
@@ -28,6 +32,7 @@ COLUMNAS_IMPORTACION = (
     ("numero_factura", "NumFactura"),
     ("nif_proveedor", "NIF"),
     ("proveedor", "Proveedor"),
+    ("cuenta_contable", "Cuenta"),
     ("base_imponible", "Base"),
     ("cuota_iva", "CuotaIVA"),
     ("retencion_irpf", "RetencionIRPF"),
@@ -36,78 +41,64 @@ COLUMNAS_IMPORTACION = (
 NUMERICAS = set(CAMPOS_NUMERO)
 
 
-def _texto(v: object) -> str:
-    if v is None:
-        return ""
-    return f"{v:.2f}" if isinstance(v, float) else str(v)
-
-
-def clave_de(lectura: Lectura) -> str:
-    """NIF|número|total en céntimos. Vacía si falta algo: sin eso no hay duplicado fiable."""
-    c = lectura.campos
-    if lectura.estado == ERROR or not all(c[n].valor not in (None, "") for n in ("nif_proveedor", "numero_factura", "total")):
-        return ""
-    nif = str(c["nif_proveedor"].valor).replace(" ", "").replace("-", "").upper()
-    return f"{nif}|{str(c['numero_factura'].valor).strip().upper()}|{round(c['total'].valor * 100)}"
-
-
-def fila_desde(lectura: Lectura, remitente: str, ruta: Path, recibida: str) -> dict:
-    a_revisar = " | ".join(
-        f"{n}: {lectura.campos[n].motivo or lectura.campos[n].estado}" for n in lectura.campos_a_revisar()
-    )
-    fila = {
-        "recibida": recibida, "remitente": remitente, "archivo": str(ruta), "estado": lectura.estado,
-        "a_revisar": a_revisar, "error": lectura.error, "que_hacer": lectura.que_hacer,
-        "clave": clave_de(lectura),
-    }
-    for n in (*CAMPOS_TEXTO, *CAMPOS_NUMERO):
-        c = lectura.campos.get(n)
-        fila[n] = _texto(c.valor) if c else ""
-    return fila
-
-
-def leer(ruta: Path | None = None) -> list[dict]:
-    ruta = ruta or config.REVISION
-    if not ruta.exists():
-        return []
-    with ruta.open(newline="", encoding="utf-8-sig") as fh:
-        return list(csv.DictReader(fh, delimiter=DELIM))
-
-
-def escribir(filas: list[dict], ruta: Path) -> None:
+def _escribir(ruta: Path, cabecera, filas) -> None:
     ruta.parent.mkdir(parents=True, exist_ok=True)
     tmp = ruta.with_suffix(".tmp")
     with tmp.open("w", newline="", encoding="utf-8-sig") as fh:
-        w = csv.DictWriter(fh, fieldnames=COLUMNAS, delimiter=DELIM, extrasaction="ignore")
-        w.writeheader()
-        w.writerows(filas)
-    tmp.replace(ruta)  # escritura atómica: nunca queda la hoja a medias
-
-
-def anadir(fila: dict, ruta: Path | None = None) -> dict:
-    """Añade la fila marcando como `repetida` si su clave ya está en la hoja."""
-    ruta = ruta or config.REVISION
-    filas = leer(ruta)
-    clave = fila.get("clave", "")
-    if clave and any(f["clave"] == clave for f in filas):
-        fila = {**fila, "estado": REPETIDA, "a_revisar": ("Factura ya registrada | " + fila["a_revisar"]).strip(" |")}
-    filas.append(fila)
-    escribir(filas, ruta)
-    return fila
-
-
-def exportar(incluir_listas: bool = False, ruta_hoja: Path | None = None, destino: Path | None = None) -> int:
-    """Escribe el CSV de importación con las filas confirmadas. Devuelve cuántas."""
-    destino = destino or config.IMPORTACION
-    validas = {CONFIRMADA} | ({LISTA} if incluir_listas else set())
-    filas = [f for f in leer(ruta_hoja) if f["estado"].strip().lower() in validas]
-    destino.parent.mkdir(parents=True, exist_ok=True)
-    with destino.open("w", newline="", encoding="utf-8-sig") as fh:
         w = csv.writer(fh, delimiter=DELIM)
-        w.writerow([cab for _, cab in COLUMNAS_IMPORTACION])
-        for f in filas:
-            w.writerow([
-                (f.get(campo) or "").replace(".", ",") if campo in NUMERICAS else f.get(campo, "")
-                for campo, _ in COLUMNAS_IMPORTACION
-            ])
+        w.writerow(cabecera)
+        w.writerows(filas)
+    tmp.replace(ruta)  # escritura atómica: nunca queda el archivo a medias
+
+
+def escribir_hoja(almacen: Almacen, ruta: Path | None = None) -> int:
+    ruta = ruta or config.REVISION
+    filas = almacen.listar()
+    _escribir(ruta, COLUMNAS_HOJA, ([("" if f[c] is None else f[c]) for c in COLUMNAS_HOJA] for f in filas))
+    return len(filas)
+
+
+def sincronizar(almacen: Almacen, ruta: Path | None = None) -> dict:
+    """Aplica a la base lo que el gestor cambió en la hoja. Devuelve un resumen."""
+    ruta = ruta or config.REVISION
+    resumen = {"modificadas": 0, "confirmadas": 0, "ignoradas": []}
+    if not ruta.exists():
+        raise RuntimeError(f"No existe {ruta}: genérala primero con `python -m facturas hoja`")
+    with ruta.open(newline="", encoding="utf-8-sig") as fh:
+        filas = list(csv.DictReader(fh, delimiter=DELIM))
+    for f in filas:
+        try:
+            actual = almacen.obtener(int(f["id"]))
+        except (KeyError, TypeError, ValueError):
+            actual = None
+        if actual is None:
+            resumen["ignoradas"].append(f"fila sin id válido: {f.get('id')!r}")
+            continue
+        cambios = {c: (f.get(c) or "").strip() for c in EDITABLES if (f.get(c) or "").strip() != (actual[c] or "").strip()}
+        if "estado" in cambios:
+            cambios["estado"] = cambios["estado"].lower()
+            if cambios["estado"] not in ESTADOS:
+                resumen["ignoradas"].append(f"#{actual['id']}: estado no válido {cambios.pop('estado')!r}")
+        confirma = cambios.get("estado") == CONFIRMADA
+        if confirma:
+            cambios.pop("estado")
+        if cambios:
+            almacen.actualizar(actual["id"], **cambios)
+            resumen["modificadas"] += 1
+        if confirma:
+            almacen.confirmar(actual["id"])  # lee la cuenta ya guardada y la aprende
+            resumen["confirmadas"] += 1
+    return resumen
+
+
+def exportar(almacen: Almacen, incluir_listas: bool = False, destino: Path | None = None) -> int:
+    """Escribe el CSV de importación con las confirmadas (y las `lista` si se pide). Devuelve cuántas."""
+    destino = destino or config.IMPORTACION
+    estados = (CONFIRMADA, LISTA) if incluir_listas else (CONFIRMADA,)
+    filas = almacen.listar(estados)
+    _escribir(
+        destino,
+        [cab for _, cab in COLUMNAS_IMPORTACION],
+        ([(f[c] or "").replace(".", ",") if c in NUMERICAS else (f[c] or "") for c, _ in COLUMNAS_IMPORTACION] for f in filas),
+    )
     return len(filas)

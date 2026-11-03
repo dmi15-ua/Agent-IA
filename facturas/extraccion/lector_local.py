@@ -80,21 +80,42 @@ class LectorLocal:
 
         try:
             with Image.open(ruta) as original:
-                imagen = ImageOps.exif_transpose(original).convert("L")  # gira las fotos del móvil
+                gris = ImageOps.exif_transpose(original).convert("L")  # gira las fotos del móvil
         except Exception as e:
             raise LecturaIlegible(f"La imagen no se puede abrir ({type(e).__name__}).") from e
 
-        imagen = ImageOps.autocontrast(imagen)
-        if imagen.width < 1600:  # el OCR rinde mejor con letras grandes
-            factor = 1600 / imagen.width
-            imagen = imagen.resize((1600, round(imagen.height * factor)))
-
         idioma = "spa" if "spa" in pytesseract.get_languages(config="") else "eng"
-        datos = pytesseract.image_to_data(imagen, lang=idioma, config="--psm 4", output_type=pytesseract.Output.DICT)
-        palabras = [(t, float(c)) for t, c in zip(datos["text"], datos["conf"]) if t.strip() and float(c) >= 0]
-        if not palabras:
+        candidatas = [self._preparar(gris)]  # el tratamiento sencillo de siempre
+        try:
+            from .imagen import mejorar  # enderezar y quitar sombras; necesita numpy
+
+            candidatas.append(self._preparar(mejorar(gris)))
+        except ImportError:
+            pass
+        # Se queda con la variante en la que el OCR reconoce más palabras con confianza.
+        resultados = [self._reconocer(c, idioma, pytesseract) for c in candidatas]
+        texto, calidad, buenas = max(resultados, key=lambda r: r[2])
+        if buenas == 0:
             raise LecturaIlegible("No se ha podido leer ningún texto en la imagen.")
-        calidad = sum(c for _, c in palabras) / len(palabras)
         if calidad < CALIDAD_ILEGIBLE:
             raise LecturaIlegible(f"La imagen se lee con muy poca calidad ({calidad:.0f} %).")
-        return pytesseract.image_to_string(imagen, lang=idioma, config="--psm 4"), calidad
+        return texto, calidad
+
+    @staticmethod
+    def _preparar(gris):
+        from PIL import ImageOps
+
+        imagen = ImageOps.autocontrast(gris)
+        if imagen.width < 1600:  # el OCR rinde mejor con letras grandes
+            imagen = imagen.resize((1600, round(imagen.height * 1600 / imagen.width)))
+        return imagen
+
+    @staticmethod
+    def _reconocer(imagen, idioma, pytesseract) -> tuple[str, float, int]:
+        """(texto, calidad media 0-100, nº de palabras reconocidas con confianza >= 60)."""
+        datos = pytesseract.image_to_data(imagen, lang=idioma, config="--psm 4", output_type=pytesseract.Output.DICT)
+        palabras = [float(c) for t, c in zip(datos["text"], datos["conf"]) if t.strip() and float(c) >= 0]
+        if not palabras:
+            return "", 0.0, 0
+        texto = pytesseract.image_to_string(imagen, lang=idioma, config="--psm 4")
+        return texto, sum(palabras) / len(palabras), sum(1 for c in palabras if c >= 60)

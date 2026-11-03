@@ -23,7 +23,9 @@ IMPORTE = re.compile(r"(?<![\d.,/])-?\d{1,3}(?:\.\d{3})+,\d{2}(?![\d]|[.,]\d)|(?
 PORCENTAJE = re.compile(r"(\d{1,2}(?:[.,]\d{1,2})?)\s*%")
 NIF = re.compile(r"\b([ABCDEFGHJNPQRSUVW]\d{7}[0-9A-J]|\d{8}[A-Z]|[XYZ]\d{7}[A-Z])\b")
 NIF_ETIQUETADO = re.compile(r"\b(?:NIF|CIF|N\.I\.F\.?|C\.I\.F\.?)\s*[:.\-]?\s*([A-Z0-9][A-Z0-9\-\.]{7,11})", re.IGNORECASE)
-FECHA_NUM = r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4}|\d{2})"
+# dd/mm/aaaa. Los lookarounds impiden engancharse a mitad de otra fecha o número ("2026-10-05" no es "26-10-05").
+FECHA_NUM = r"(?<![\d/\-.])(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4}|\d{2})(?![\d/\-.]\d)(?!\d)"
+FECHA_ISO = r"(?<![\d/\-.])(\d{4})-(\d{1,2})-(\d{1,2})(?!\d)"
 FECHA_TXT = r"(\d{1,2})\s+de\s+(" + "|".join(MESES) + r")\s+(?:de\s+)?(\d{4})"
 SUFIJO_EMPRESA = re.compile(r"\b(?:S\.?\s?L\.?\s?U?\.?|S\.?\s?A\.?|S\.?\s?C\.?|C\.?\s?B\.?|S\.?\s?COOP\.?|S\.?L\.?L\.?)\s*$", re.IGNORECASE)
 MARCADOR_CLIENTE = re.compile(r"facturar a|factura a|cliente|destinatario|comprador|bill to|datos del cliente")
@@ -70,6 +72,8 @@ def _fechas(linea: str) -> list[str]:
     salida = []
     for d, m, a in re.findall(FECHA_NUM, linea):
         salida.append((int(a) + 2000 if len(a) == 2 else int(a), int(m), int(d)))
+    for a, m, d in re.findall(FECHA_ISO, linea):
+        salida.append((int(a), int(m), int(d)))
     for d, mes, a in re.findall(FECHA_TXT, _norm(linea)):
         salida.append((int(a), MESES[mes], int(d)))
     validas = []
@@ -95,8 +99,8 @@ def _fecha(lineas: list[str]) -> dict[str, Any]:
 def _numero(lineas: list[str]) -> dict[str, Any]:
     patrones = [
         r"(?:factura|invoice)\s*(?:(?:n[º°o2]|num(?:ero)?|no|#)\.?)?\s*[:.\-]?\s*(?=[A-Z0-9\-/.]*\d)([A-Z0-9][A-Z0-9\-/.]{1,24})",
-        # El OCR confunde "Nº" con N2, N*, No, N°...: se acepta hasta dos símbolos entre la N y los dos puntos.
-        r"\bn[\W2o0º°]{0,2}\s*(?:de factura)?\s*:\s*([A-Z0-9][A-Z0-9\-/.]{0,24})",
+        # El OCR confunde "Nº" con N2, N*, No, N9, N°...: se acepta hasta dos símbolos entre la N y los dos puntos.
+        r"\bn[\W2o09º°]{0,2}\s*(?:de factura)?\s*:\s*([A-Z0-9][A-Z0-9\-/.]{0,24})",
         r"\bn[uú]mero(?: de factura)?\s*[:.]?\s*([A-Z0-9][A-Z0-9\-/.]{0,24})",
     ]
     candidatos = []
@@ -173,7 +177,7 @@ def _importes_factura(lineas: list[str]) -> tuple[dict, dict, dict, dict, list[d
         if not cifras:
             continue
         pct = PORCENTAJE.search(linea)
-        tiene_iva = re.search(r"\bi\.?v\.?a\.?\b", n) is not None
+        tiene_iva = re.search(r"\b(?:i\.?v\.?a\.?|vat)\b", n) is not None
         if re.search(r"irpf|retenc", n):
             ret_c.append(abs(cifras[-1]))
         elif (tiene_iva and pct) or (pct and len(cifras) >= 2 and float(pct.group(1).replace(",", ".")) in (0, 4, 5, 10, 21)):

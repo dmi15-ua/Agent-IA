@@ -1,0 +1,55 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 958 >>
+stream
+BT /F2 15 Tf 56 777 Td (Thames Consulting Ltd) Tj ET
+BT /F1 10 Tf 56 762 Td (VAT: GB123456789) Tj ET
+BT /F1 10 Tf 56 747 Td (1 London Road, London) Tj ET
+BT /F2 18 Tf 380 774 Td (INVOICE) Tj ET
+BT /F1 11 Tf 380 757 Td (Invoice No: TC-0456) Tj ET
+BT /F1 11 Tf 380 741 Td (Date: 28/09/2026) Tj ET
+BT /F2 10 Tf 56 692 Td (Bill to:) Tj ET
+BT /F1 11 Tf 56 676 Td (Cliente Demo S.L.) Tj ET
+BT /F1 10 Tf 56 662 Td (VAT: B87654323) Tj ET
+BT /F2 10 Tf 56 617 Td (Description) Tj ET
+BT /F2 10 Tf 470 617 Td (Amount) Tj ET
+BT /F1 10 Tf 56 599 Td (Consulting services) Tj ET
+BT /F1 10 Tf 470 599 Td (800,00 \200) Tj ET
+BT /F1 11 Tf 330 548 Td (Subtotal) Tj ET
+BT /F1 11 Tf 470 548 Td (800,00 \243) Tj ET
+BT /F1 11 Tf 330 530 Td (VAT 0%) Tj ET
+BT /F1 11 Tf 470 530 Td (0,00 \243) Tj ET
+BT /F1 11 Tf 330 512 Td (TOTAL) Tj ET
+BT /F1 11 Tf 470 512 Td (800,00 \243) Tj ET
+BT /F1 8 Tf 56 44 Td (Inscrita en el Registro Mercantil de Madrid. Datos ficticios para pruebas.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000001260 00000 n 
+0000001357 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1459
+%%EOF

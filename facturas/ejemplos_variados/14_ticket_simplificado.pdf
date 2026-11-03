@@ -1,0 +1,54 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 865 >>
+stream
+BT /F2 14 Tf 150 768 Td (Bar Los Amigos S.L.) Tj ET
+BT /F1 10 Tf 150 752 Td (CIF: B01234566) Tj ET
+BT /F1 10 Tf 150 738 Td (C/ Falsa 123 - Valencia) Tj ET
+BT /F2 11 Tf 150 706 Td (FACTURA SIMPLIFICADA) Tj ET
+BT /F1 10 Tf 150 691 Td (Nº: T-88213) Tj ET
+BT /F1 10 Tf 150 677 Td (Fecha: 12/10/2026) Tj ET
+BT /F1 10 Tf 150 642 Td (2 x Menú del día) Tj ET
+BT /F1 10 Tf 330 642 Td (36,00 \200) Tj ET
+BT /F1 10 Tf 150 626 Td (2 x Café) Tj ET
+BT /F1 10 Tf 330 626 Td (4,00 \200) Tj ET
+BT /F1 10 Tf 150 610 Td (1 x Agua) Tj ET
+BT /F1 10 Tf 330 610 Td (1,10 \200) Tj ET
+BT /F1 11 Tf 150 573 Td (Base imponible) Tj ET
+BT /F1 11 Tf 330 573 Td (37,36 \200) Tj ET
+BT /F1 11 Tf 150 556 Td (IVA 10%) Tj ET
+BT /F1 11 Tf 330 556 Td (3,74 \200) Tj ET
+BT /F2 11 Tf 150 539 Td (TOTAL) Tj ET
+BT /F2 11 Tf 330 539 Td (41,10 \200) Tj ET
+BT /F1 9 Tf 150 494 Td (Gracias por su visita) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000001167 00000 n 
+0000001264 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1366
+%%EOF

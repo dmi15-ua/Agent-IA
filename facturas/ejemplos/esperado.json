@@ -17,7 +17,7 @@
     "fecha_expedicion": "2026-10-15",
     "proveedor": "Suministros Ficticios S.L.",
     "nif_proveedor": "B12345674",
-    "nif_cliente": "B87654321",
+    "nif_cliente": "B87654323",
     "base_imponible": 100.0,
     "cuota_iva": 21.0,
     "total": 121.0

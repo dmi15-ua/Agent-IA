@@ -17,7 +17,8 @@ LECTOR = os.getenv("FACTURAS_LECTOR", "local")
 # --- Carpetas y ficheros ----------------------------------------------------
 DATOS = Path(os.getenv("FACTURAS_DATOS", "facturas_datos"))
 ORIGINALES = DATOS / "originales"        # copia del adjunto tal cual llegó, por remitente
-REVISION = DATOS / "revision.csv"        # la "hoja" que revisa el gestor
+BASE_DATOS = DATOS / "facturas.db"       # SQLite: fuente de verdad (facturas y cuentas por proveedor)
+REVISION = DATOS / "revision.csv"        # vista de la base para que el gestor trabaje en Excel
 IMPORTACION = DATOS / "importacion.csv"  # salida para el programa de contabilidad
 
 # --- Correo (IMAP) ----------------------------------------------------------
@@ -32,3 +33,8 @@ TIPOS_ADJUNTO = {
     "image/png": ".png",
     "image/webp": ".webp",
 }
+
+# --- Cuentas contables ------------------------------------------------------
+# Veces seguidas que un humano debe confirmar la misma cuenta de un proveedor antes de que el
+# sistema deje de marcar la factura para revisión por ese motivo.
+CONFIRMACIONES_CUENTA = int(os.getenv("FACTURAS_CONFIRMACIONES_CUENTA", "3"))
